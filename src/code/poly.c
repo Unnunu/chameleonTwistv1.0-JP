@@ -330,7 +330,37 @@ s32 func_800C9928(Rect3D* rect, s32 disp_mask, s32 unk_mask) {
     return total;
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9A24.s")
+s32 func_800C9A24(Rect3D* rect, s32 unused_arg, s32 disp_mask) {
+    Collider** ptr;
+    s32 i;    
+    s32 total = 0;
+    s32 disp_type;
+
+    sNumListedPolygons = 0;
+    ptr = D_80240898;
+    for (i = 0; i < gFeildCount; i++, ptr++) {
+        Collider* c = *ptr;
+
+        disp_type = 0;
+        if (c->unk_118 != 0) {
+            disp_type |= COLLIDER_DISP_TYPE_7;
+            if (!i) { // TODO: fake match
+            }
+        }
+        if (c->unk_114 & 1) {
+            disp_type |= COLLIDER_DISP_TYPE_70;
+        }
+
+        if (disp_type & disp_mask) {
+            if (IfRectsIntersect(rect, &c->bbox) == 0) {
+                continue;
+            }
+            RegisterCollider(c);
+            total++;
+        }
+    }
+    return total;
+}
 
 // Checks if Poly's bounding box intersects with the given rectangle
 s32 IfPolyBoundIntersectsRect(Poly* poly, Rect3D* rect) {
@@ -346,7 +376,12 @@ s32 IfPolyBoundIntersectsRect(Poly* poly, Rect3D* rect) {
     return 1;
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9B7C.s")
+//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9B7C.s")
+f32 func_800C9B7C(f32 arg0, f32 arg1, f32 arg2, f32 arg3, f32 arg4) {
+    arg0 -= arg3;
+    arg1 -= arg4;
+    return NORM_3(arg0, arg1, arg2);
+}
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/DistanceWithLine.s")
 
