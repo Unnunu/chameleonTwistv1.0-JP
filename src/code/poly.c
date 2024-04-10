@@ -254,6 +254,7 @@ void RegisterNextCollider(Collider* f) {
     RegisterCollider(f);
 }
 
+//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/RegisterCollidersIntersectingRect.s")
 s32 RegisterCollidersIntersectingRect(Rect3D* rect, s32 disp_mask, s32 unk_mask) {
     s32 i;
     Collider** ptr;
@@ -265,7 +266,7 @@ s32 RegisterCollidersIntersectingRect(Rect3D* rect, s32 disp_mask, s32 unk_mask)
         Collider* c = *ptr;
 
         if ((c->unk_114 & unk_mask) && (c->disp_type & disp_mask)) {
-            if (IfRectsIntersect(rect, &c->unk_CC) == 0) {
+            if (IfRectsIntersect(rect, &c->bbox) == 0) {
                 continue;
             }
 
@@ -294,7 +295,7 @@ s32 func_800C982C(Rect3D* rect, PlayerActor* player) {
             continue;
         }
         if ((c->unk_114 & 2) && (c->disp_type & 0x77)) {
-            if (IfRectsIntersect(rect, &c->unk_CC) == 0) {
+            if (IfRectsIntersect(rect, &c->bbox) == 0) {
                 continue;
             }
             if (i && i && i) { // TODO: fake match
@@ -306,19 +307,20 @@ s32 func_800C982C(Rect3D* rect, PlayerActor* player) {
     return total;
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9928.s")
-/*s32 func_800C9928(Rect3D* rect, s32 arg1, s32 arg2) {
+s32 func_800C9928(Rect3D* rect, s32 disp_mask, s32 unk_mask) {
     Collider** ptr;
     s32 i;    
     s32 total = 0;
 
     sNumListedPolygons = 0;
     ptr = D_80240898;
+    if (!total && !total) { // TODO: fake match
+    }
     for (i = 0; i < gFeildCount; i++, ptr++) {
         Collider* c = *ptr;
 
-        if ((c->unk_114 & arg2) && c->unk_124 != 1 && (c->disp_type & arg1)) {
-            if (IfRectsIntersect(rect, &c->unk_CC) == 0) {
+        if ((c->unk_114 & unk_mask) && c->unk_124 != 1 && (c->disp_type & disp_mask)) {
+            if (IfRectsIntersect(rect, &c->bbox) == 0) {
                 continue;
             }
             RegisterCollider(c);
@@ -326,7 +328,7 @@ s32 func_800C982C(Rect3D* rect, PlayerActor* player) {
         }
     }
     return total;
-}*/
+}
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9A24.s")
 

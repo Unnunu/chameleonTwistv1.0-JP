@@ -380,7 +380,7 @@ typedef struct Collider {
     /* 0x0BC */ s32 unk_BC;
     /* 0x0C0 */ s32 unk_C0;
     /* 0x0C4 */ char padC4[8];                      /* maybe part of unk_C0[3]? */
-    /* 0x0CC */ Rect3D unk_CC;
+    /* 0x0CC */ Rect3D bbox;
     /* 0x0E4 */ Poly* polygons;
     /* 0x0E8 */ ColliderAsset* asset;
     /* 0x0EC */ s32 unk_EC;
