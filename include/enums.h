@@ -538,4 +538,27 @@ enum JLFlags {
 	BossRabbit = 31 //^
 };*/
 
+enum RotationAxis {
+    ROTATION_NONE = 0,
+	ROTATION_X = 1,
+	ROTATION_Y = 2,
+	ROTATION_Z = 3
+};
+
+enum ColliderTypes {
+    COLLIDER_TYPE_7 = 7,
+    COLLIDER_TYPE_8 = 8,
+    COLLIDER_TYPE_25 = 25,
+    COLLIDER_TYPE_27 = 27,
+    COLLIDER_TYPE_29 = 29,
+    COLLIDER_TYPE_33 = 33,
+    COLLIDER_TYPE_34 = 34,
+    COLLIDER_TYPE_35 = 35
+};
+
+enum ColliderDispTypes {
+    COLLIDER_DISP_TYPE_7 = 0x7,
+    COLLIDER_DISP_TYPE_70 = 0x70
+};
+
 #endif

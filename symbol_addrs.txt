@@ -1188,6 +1188,15 @@ Timing_EndFrameTime = 0x800FF8A0;
 Timing_DelayAudioInterval = 0x800FF888;
 Timing_BusyTime = 0x801B316C;
 
+sPolygonArray = 0x8020D968;
+sPolygons = 0x80235968;
+sNumListedPolygons = 0x8023696C;
+sNumPolygons = 0x80236968;
+LoadPolygonsFromAsset = 0x800C8F0C;
+RegisterCollider = 0x800C9504;
+RegisterFirstCollider = 0x800C9704;
+RegisterNextCollider = 0x800C9728;
+
 //rodata stuff
 D_8010B484 = 0x8010B484; // type:f32 force_migration:True size:0x08
 D_8010FA70 = 0x8010FA70; // type:f64 force_migration:True size:0x08

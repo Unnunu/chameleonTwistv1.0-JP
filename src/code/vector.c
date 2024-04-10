@@ -236,9 +236,9 @@ Vec3f* WorldToLocal(Vec3f* outVec, Vec3f vec, Poly* poly) {
     Vec3f temp_vec;
  
     OnlyCheckPolyInfoLevel(poly, 2, "WorldToLocal");
-    vec.x = vec.x - poly->offset.x;
-    vec.y = vec.y - poly->offset.y;
-    vec.z = vec.z - poly->offset.z;
+    vec.x = vec.x - poly->vertices[0].x;
+    vec.y = vec.y - poly->vertices[0].y;
+    vec.z = vec.z - poly->vertices[0].z;
     temp_vec.x = (poly->unkVectorStruct.vec1.z * vec.z) + ((vec.x * poly->unkVectorStruct.vec1.x) + (vec.y * poly->unkVectorStruct.vec1.y));
     temp_vec.y = (poly->unkVectorStruct.vec2.z * vec.z) + ((vec.x * poly->unkVectorStruct.vec2.x) + (vec.y * poly->unkVectorStruct.vec2.y));
     temp_vec.z = (poly->unkVectorStruct.normal.z * vec.z) + ((vec.x * poly->unkVectorStruct.normal.x) + (vec.y * poly->unkVectorStruct.normal.y));
@@ -263,9 +263,9 @@ Vec3f* LocalToWorld(Vec3f* outVec, Vec3f vec, Poly* poly) {
     temp_vec.x = (poly->unkVectorStruct.normal.x * vec.z) + ((vec.x * poly->unkVectorStruct.vec1.x) + (vec.y * poly->unkVectorStruct.vec2.x));
     temp_vec.y = (poly->unkVectorStruct.normal.y * vec.z) + ((vec.x * poly->unkVectorStruct.vec1.y) + (vec.y * poly->unkVectorStruct.vec2.y));
     temp_vec.z = (poly->unkVectorStruct.normal.z * vec.z) + ((vec.x * poly->unkVectorStruct.vec1.z) + (vec.y * poly->unkVectorStruct.vec2.z));
-    temp_vec.x += poly->offset.x;
-    temp_vec.y += poly->offset.y;
-    temp_vec.z += poly->offset.z;
+    temp_vec.x += poly->vertices[0].x;
+    temp_vec.y += poly->vertices[0].y;
+    temp_vec.z += poly->vertices[0].z;
     *outVec = temp_vec;
     return outVec;
 }
@@ -311,9 +311,9 @@ s32 IsOnPolygon(Vec3f vec, Poly* poly) {
     f32 dotProduct;
     
     OnlyCheckPolyInfoLevel(poly, 2, "IsOnPolygon");
-    vec.x -= poly->offset.x;
-    vec.y -= poly->offset.y;
-    vec.z -= poly->offset.z;
+    vec.x -= poly->vertices[0].x;
+    vec.y -= poly->vertices[0].y;
+    vec.z -= poly->vertices[0].z;
     
     dotProduct = vec.z * poly->unkVectorStruct.normal.z + (vec.x * poly->unkVectorStruct.normal.x + vec.y * poly->unkVectorStruct.normal.y);
 
@@ -337,10 +337,6 @@ s32 IsOnPolygon(Vec3f vec, Poly* poly) {
  * @return (Vec3f) the vector after the rotation
 */
 Vec3f* RotateVector3D(Vec3f* outVec, Vec3f inpVec, f32 theta, s32 rotateAroundAxesIndex) {
-    #define NO_ROTATION 0
-    #define X_ROTATION 1
-    #define Y_ROTATION 2
-    #define Z_ROTATION 3
     Vec3f temp_vec;
     f32 sin;
     f32 cos;
@@ -348,20 +344,20 @@ Vec3f* RotateVector3D(Vec3f* outVec, Vec3f inpVec, f32 theta, s32 rotateAroundAx
     sin = sinf(theta);
     cos = cosf(theta);
     switch (rotateAroundAxesIndex) {
-    case NO_ROTATION:
+    case ROTATION_NONE:
         temp_vec = inpVec;
         break;
-    case X_ROTATION:
+    case ROTATION_X:
         temp_vec.x = inpVec.x;
         temp_vec.y = (cos * inpVec.y) - (sin * inpVec.z);
         temp_vec.z = (sin * inpVec.y) + (cos * inpVec.z);
         break;
-    case Y_ROTATION:
+    case ROTATION_Y:
         temp_vec.y = inpVec.y;
         temp_vec.x = (sin * inpVec.z) + (cos * inpVec.x);
         temp_vec.z = (cos * inpVec.z) - (sin * inpVec.x);
         break;
-    case Z_ROTATION:
+    case ROTATION_Z:
         temp_vec.z = inpVec.z;
         temp_vec.x = (cos * inpVec.x) - (sin * inpVec.y);
         temp_vec.y = (sin * inpVec.x) + (cos * inpVec.y);

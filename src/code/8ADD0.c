@@ -325,10 +325,10 @@ Vec3f* func_800B2AB4(Vec3f* arg0, Vec3f arg1, temp_func_800B2AB4* arg4) {
 s32 func_800B2B50(s32 arg0, s32 arg1) {
     s32 ret = -1;
     s32 i;
-    unkSpriteStruct5** temp;
-    unkSpriteStruct5* temp2;
+    Collider** temp;
+    Collider* temp2;
 
-    for (i = 0, temp = &D_80240898; i < gFeildCount; i++, temp++) {
+    for (i = 0, temp = D_80240898; i < gFeildCount; i++, temp++) {
         temp2 = *temp;
         if ((arg0 == temp2->unk_04) && (arg1 == temp2->unk_08)) {
             ret = temp2->unk_00;
@@ -414,12 +414,12 @@ void func_800B2D34(void) {
 
 void func_800B3364(s32 arg0) {
     s32 i;
-    unkSpriteStruct5** temp_s0;
-    unkSpriteStruct5* unkSpritePtr;
+    Collider** temp_s0;
+    Collider* unkSpritePtr;
 
-    for (i = 0, temp_s0 = &D_80240898; i < gFeildCount; i++, temp_s0++) {
+    for (i = 0, temp_s0 = D_80240898; i < gFeildCount; i++, temp_s0++) {
         unkSpritePtr = *temp_s0;
-        unkSpritePtr->unk_E4 = 0;
+        unkSpritePtr->polygons = 0;
         if ((arg0 == 1) || (func_800B3FFC(unkSpritePtr, 4) != 0)) {
             func_800B2E40(unkSpritePtr);
         }
@@ -557,11 +557,11 @@ void ResetStageModels(void) {
 #pragma GLOBAL_ASM("asm/nonmatchings/code/8ADD0/func_800B3D9C.s")
 
 // sprite.0 bool checker
-s32 func_800B3DFC(unkSpriteStruct* sprite) {
-    return (sprite->unk_00 == 0 ) ? 1 : 0;
+s32 func_800B3DFC(Struct_800B3DFC* arg0) {
+    return (arg0->unk_00 == 0 ) ? 1 : 0;
 }
 
-s32 func_800B3E1C(unkSpriteStruct* arg0) {
+s32 func_800B3E1C(Struct_800B3DFC* arg0) {
     s32 i;
     
     if (arg0 == NULL) {
@@ -638,7 +638,7 @@ s32 func_800B3F9C(unkSpriteStruct4* arg0) {
 }
 
 //this struct pointer type for arg0 is wrong
-s32 func_800B3FFC(unkSpriteStruct5 *arg0, s32 arg1) {
+s32 func_800B3FFC(Collider *arg0, s32 arg1) {
     Vec3w *new_var = &D_801087D8[arg1];
     int new_var2 = arg0->unk_14 & new_var->y;
 
@@ -647,13 +647,13 @@ s32 func_800B3FFC(unkSpriteStruct5 *arg0, s32 arg1) {
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/8ADD0/func_800B402C.s")
 
-void func_800B4070(unkSpriteStruct* arg0) {
+void func_800B4070(Collider* arg0) {
     s32 var_a2;
 
     if ((arg0->unk_4C != 0) && (func_800B3FFC(arg0->unk_4C, 4) == 1)) {
         var_a2 = 1;
         //no idea what's going on with arg0 here
-    } else if ( func_800B3FFC((unkSpriteStruct5*)arg0, 0) == 2 || func_800B3FFC((unkSpriteStruct5*)arg0, 2) == 2) {
+    } else if ( func_800B3FFC(arg0, 0) == 2 || func_800B3FFC(arg0, 2) == 2) {
         var_a2 = 1;
     } else {
         var_a2 = 0;
@@ -661,7 +661,7 @@ void func_800B4070(unkSpriteStruct* arg0) {
     func_800B402C(arg0, 4, var_a2);
 }
 
-void func_800B40F4(unkSpriteStruct* arg0) {
+void func_800B40F4(Collider* arg0) {
     arg0->unk_14 = 0;
 }
 

@@ -306,14 +306,51 @@ typedef struct actorSubArray { //starts at 0x40
     /* 0x10 */ f32 unk_10;
 } actorSubArray; //sizeof 0x14
 
+typedef struct Vec3wi {
+    s32 vertIndexes[3];
+} Vec3wi;
+
+typedef struct ColliderAsset {
+    /* 0x00 */ s32 unk_00;
+    /* 0x04 */ s32 numPolygons;
+    /* 0x08 */ Vec3f* vertArray;
+    /* 0x0C */ Vec3wi* triangleData;
+} ColliderAsset; // sizeof >= 0x10
+
+typedef struct unkVecStruct {
+    Vec3f vec1;
+    Vec3f vec2;
+    Vec3f normal;
+} unkVecStruct;
+
+typedef struct Poly {
+    /* 0x00 */ s32 unk_00; 
+    /* 0x04 */ s32 unk_04;
+    /* 0x08 */ Vec3f vertices[3]; // global coordinates
+    /* 0x2C */ Rect3D boundBox;
+    /* 0x44 */ unkVecStruct unkVectorStruct;
+    /* 0x68 */ s32 disp_type;
+    /* 0x6C */ f32 unk_6C;
+    /* 0x70 */ f32 unk_70;
+    /* 0x74 */ f32 unk_74;
+    /* 0x78 */ f32 unk_78;
+    /* 0x7C */ f32 unk_7C;
+    /* 0x80 */ f32 unk_80;
+    /* 0x84 */ f32 unk_84;
+    /* 0x88 */ f32 unk_88;
+    /* 0x8C */ f32 unk_8C;
+    /* 0x90 */ f32 unk_90;
+    /* 0x94 */ char unk_94[12];
+} Poly; // sizeof 0xA0
+
 typedef struct Collider {
     /* 0x000 */ s32 unk_00;
     /* 0x004 */ s32 unk_04;
     /* 0x008 */ s32 unk_08;
-    /* 0x00C */ s32 unk_0C;
-    /* 0x010 */ s32 unk_10;
+    /* 0x00C */ s32 disp_type; // see ColliderDispTypes
+    /* 0x010 */ s32 typeMaybe; // see ColliderTypes, although not sure what it is
     /* 0x014 */ s32 unk_14;
-    /* 0x018 */ Vec3f sfxPos;
+    /* 0x018 */ Vec3f pos;
     /* 0x024 */ f32 unk_24;
     /* 0x028 */ s32 UNK_28;
     /* 0x02C */ s32 unk_2C;
@@ -322,12 +359,11 @@ typedef struct Collider {
     /* 0x038 */ f32 unk_38;
     /* 0x03C */ Vec3f unk_3C;
     /* 0x048 */ f32 unk_48;
-    /* 0x04C */ f32 unk_4C;
-    /* 0x050 */ f32 unk_50;
-    /* 0x054 */ f32 unk_54;
-    /* 0x058 */ f32 unk_58;
-    /* 0x05C */ f32 unk_5C;
-    /* 0x060 */ char pad60[0x20];                   /* maybe part of unk_5C[9]? */
+    /* 0x04C */ struct Collider* unk_4C;
+    /* 0x050 */ Vec3f scale;
+    /* 0x05C */ s32 rotationType;
+    /* 0x060 */ f32 unk_angle_rad;
+    /* 0x064 */ char pad64[0x1C];
     /* 0x080 */ s32 unk80;                          /* inferred */
     /* 0x084 */ char pad84[8];                      /* maybe part of unk80[3]? */
     /* 0x08C */ f32 unk_8C;
@@ -344,14 +380,9 @@ typedef struct Collider {
     /* 0x0BC */ s32 unk_BC;
     /* 0x0C0 */ s32 unk_C0;
     /* 0x0C4 */ char padC4[8];                      /* maybe part of unk_C0[3]? */
-    /* 0x0CC */ f32 unk_CC;
-    /* 0x0D0 */ f32 unk_D0;
-    /* 0x0D4 */ f32 unk_D4;
-    /* 0x0D8 */ f32 unk_D8;
-    /* 0x0DC */ f32 unk_DC;
-    /* 0x0E0 */ f32 unk_E0;
-    /* 0x0E4 */ void* unk_E4;
-    /* 0x0E8 */ void* unk_E8;
+    /* 0x0CC */ Rect3D unk_CC;
+    /* 0x0E4 */ Poly* polygons;
+    /* 0x0E8 */ ColliderAsset* asset;
     /* 0x0EC */ s32 unk_EC;
     /* 0x0F0 */ char padF0[8];                      /* maybe part of unk_EC[3]? */
     /* 0x0F8 */ void* unk_F8;
@@ -421,25 +452,6 @@ typedef struct unk80100F50 {
 typedef struct frameBufferData {
     /* 0x00 */ char data[0x25800]; // h*W*colDepth
 } frameBufferData; //sizeof 0x25800
-
-typedef struct unkSpriteStruct5 {
-    /* 0x00 */ s32 unk_00;
-    /* 0x04 */ s32 unk_04;
-    /* 0x08 */ s32 unk_08;
-    /* 0x0C */ char unk_0C[0x08];
-    /* 0x14 */ s32 unk_14;
-    /* 0x18 */ char unk_18[0xCC];
-    /* 0xE4 */ s32 unk_E4;
-} unkSpriteStruct5; //sizeof ??
-
-typedef struct unkSpriteStruct {
-    /* 0x00 */ s32 unk_00;
-    /* 0x04 */ char unk_04[0x10];
-    /* 0x14 */ s32 unk_14;
-    /* 0x18 */ char unk_18[0x34];
-    /* 0x4C */ struct unkSpriteStruct5* unk_4C; //pointer to another type of this same struct
-    /* 0x50 */ char unk_50[0x10];
-} unkSpriteStruct; //sizeof 0x60
 
 typedef struct unkSpriteStruct2 {
     /* 0x00 */ s32 unk_00;
@@ -544,33 +556,6 @@ typedef struct unkStruct0 {
     /* 0x1C */ s32 unk_1C;
     /* 0x20 */ s32 unk_20;
 } unkStruct0; //sizeof 0x24
-
-typedef struct unkVecStruct {
-    Vec3f vec1;
-    Vec3f vec2;
-    Vec3f normal;
-} unkVecStruct;
-
-typedef struct Poly {
-    /* 0x00 */ s32 unk_00; 
-    /* 0x04 */ char unk_04[4];
-    /* 0x08 */ Vec3f offset;
-    /* 0x14 */ Vec3f unkVec;
-    /* 0x20 */ Vec3f unkVec2;
-    /* 0x2C */ Rect3D boundBox;
-    /* 0x44 */ unkVecStruct unkVectorStruct;
-    /* 0x68 */ f32 unk_68;
-    /* 0x6C */ f32 unk_6C;
-    /* 0x70 */ f32 unk_70;
-    /* 0x74 */ f32 unk_74;
-    /* 0x78 */ f32 unk_78;
-    /* 0x7C */ f32 unk_7C;
-    /* 0x80 */ f32 unk_80;
-    /* 0x84 */ f32 unk_84;
-    /* 0x88 */ f32 unk_88;
-    /* 0x8C */ f32 unk_8C;
-    /* 0x90 */ f32 unk_90;
-} Poly;
 
 typedef struct Actor {
     /* 0x000 */ s32 actorID;
@@ -1110,6 +1095,11 @@ typedef struct unk80174880 {
 /* 0x78 */ s32 unk_78;
 /* 0x7C */ s32 unk_7C;
 } unk80174880;
+
+typedef struct Struct_800B3DFC {
+    /* 0x00 */ s32 unk_00;
+    /* 0x00 */ char unk_04[0x5C];
+} Struct_800B3DFC; //sizeof 0x60
 
 //84E0 bss structs
 typedef struct unk80174900 {

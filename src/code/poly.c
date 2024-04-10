@@ -25,6 +25,11 @@ extern f32 D_80108FE4;
 extern s32 D_80108FE8;
 extern s32 D_80108FEC;
 extern Vec3f D_802489C8[8];
+extern Poly sPolygonArray[1024];
+extern s32 sNumPolygons;
+extern Poly* sPolygons[1024];
+extern s32 sNumListedPolygons;
+extern Collider* D_80240898[];
 
 /* Migrated BSS */
 //TODO: type this data correctly
@@ -48,37 +53,280 @@ void func_800D69D0(s32, PlayerActor*, Tongue*, Camera*, Vec3f*, Vec3f*, s32);
 Collider* func_800CAF88(Vec3f, f32, f32);
 Collider* SearchPolygonBetween(Vec3f, Vec3f, s32, s32, s32);
 void OrderRectBounds(Rect3D*);
-void func_800C9748(Rect3D*, s32, s32);
 void func_800CA734(Vec3f*, Vec3f, f32, s32);
 void func_800CBC08(Actor*);
 void func_800CC814(Actor*, Vec3f, s32);
 
 void ClearPolygon(void) {
-    D_80236968 = 0;
+    sNumPolygons = 0;
 }
 
 const char D_80110180[] = "\n";
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C8F0C.s")
+#ifdef NON_MATCHING
+void LoadPolygonsFromAsset(Collider* f) {
+    ColliderAsset* colliderAsset;
+    Vec3wi* triangleData;
+    s32 numPolygons;
+    s32 i;
+    Poly* poly;
+    f32 sinAlpha, cosAlpha, sinBeta, cosBeta;
+    s32 j;
+    Vec3f* pos;
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9504.s")
+    colliderAsset = f->asset;
+    triangleData = colliderAsset->triangleData;
+    numPolygons = colliderAsset->numPolygons;
+    poly = &sPolygonArray[sNumPolygons];
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9600.s")
+    if (sNumPolygons + numPolygons > 0x400) {
+        DummiedPrintf3("Too Many Polygons: %d\n", sNumPolygons + numPolygons);
+        return;
+    }
 
-void func_800C9704(void) {
-    D_8023696C = 0;
-    func_800C9504();
+    sNumPolygons += numPolygons;
+    f->polygons = poly;
+
+    if (f->typeMaybe == COLLIDER_TYPE_8 ||
+        f->typeMaybe == COLLIDER_TYPE_27 ||
+        f->typeMaybe == COLLIDER_TYPE_25 ||
+        f->typeMaybe == COLLIDER_TYPE_29 ||
+        f->typeMaybe == COLLIDER_TYPE_34 ||
+        f->typeMaybe == COLLIDER_TYPE_35 ||
+        f->typeMaybe == COLLIDER_TYPE_7) {
+        sinAlpha = sinf(f->unk_angle_rad);
+        cosAlpha = cosf(f->unk_angle_rad);
+    } else if (f->typeMaybe == COLLIDER_TYPE_33) {
+        sinAlpha = sinf(DEGREES_TO_RADIANS_PI(f->unk_8C));
+        cosAlpha = cosf(DEGREES_TO_RADIANS_PI(f->unk_8C));
+        sinBeta = sinf(DEGREES_TO_RADIANS_PI(f->unk_90));
+        cosBeta = cosf(DEGREES_TO_RADIANS_PI(f->unk_90));
+    }
+
+    for (i = 0; i < numPolygons; i++, triangleData++, poly++) {
+        poly->unk_00 = 0;
+        poly->unk_04 = f->unk_00;
+        pos = &f->pos;
+        for (j = 0; j < 3; j++) {
+            Vec3f* vtxLocal = &colliderAsset->vertArray[triangleData->vertIndexes[j]];
+            if (f->typeMaybe == COLLIDER_TYPE_33) {
+                // rotate oround two axes
+                f32 vx = vtxLocal->x * f->scale.x;
+                f32 vy = vtxLocal->y * f->scale.y;
+                f32 vz = vtxLocal->z * f->scale.z;
+                // rotate around X axis
+                f32 y1 = cosAlpha * vy - sinAlpha * vz;
+                f32 newZ = sinAlpha * vy + cosAlpha * vz;
+                // rotate around Y axis
+                f32 z1 = cosBeta * newZ - sinBeta * vx;
+                f32 x1 = sinBeta * newZ + cosBeta * vx;
+                
+                poly->vertices[j].x = pos->x + x1;
+                poly->vertices[j].y = pos->y + y1;
+                poly->vertices[j].z = pos->z + z1;
+            } else if (f->typeMaybe == COLLIDER_TYPE_8 ||
+                       f->typeMaybe == COLLIDER_TYPE_27 ||
+                       f->typeMaybe == COLLIDER_TYPE_25 ||
+                       f->typeMaybe == COLLIDER_TYPE_29 ||
+                       f->typeMaybe == COLLIDER_TYPE_34 ||
+                       f->typeMaybe == COLLIDER_TYPE_35 ||
+                       f->typeMaybe == COLLIDER_TYPE_7) {
+                // rotate around one axis
+                switch (f->rotationType) {
+                    case ROTATION_X:
+                        {
+                            f32 vy = vtxLocal->y * f->scale.y;
+                            f32 vz = vtxLocal->z * f->scale.z;
+                            poly->vertices[j].x = pos->x + (vtxLocal->x * f->scale.x);
+                            poly->vertices[j].y = pos->y + (cosAlpha * vy - sinAlpha * vz);
+                            poly->vertices[j].z = pos->z + (sinAlpha * vy + cosAlpha * vz);
+                        }
+                        break;
+                    case ROTATION_Y:
+                        {
+                            f32 vz = vtxLocal->z * f->scale.z;
+                            f32 vx = vtxLocal->x * f->scale.x;                            
+                            poly->vertices[j].x = pos->x + (sinAlpha * vz + cosAlpha * vx);
+                            poly->vertices[j].y = pos->y + (vtxLocal->y * f->scale.y);
+                            poly->vertices[j].z = pos->z + (cosAlpha * vz - sinAlpha * vx);
+                        }
+                        break;
+                    case ROTATION_Z:
+                        {
+                            f32 vx = vtxLocal->x * f->scale.x;
+                            f32 vy = vtxLocal->y * f->scale.y;
+                            poly->vertices[j].x = pos->x + (cosAlpha * vx - sinAlpha * vy);
+                            poly->vertices[j].y = pos->y + (sinAlpha * vx + cosAlpha * vy);
+                            poly->vertices[j].z = pos->z + (vtxLocal->z * f->scale.z);
+                        }
+                        break;
+                }
+            } else {
+                // no rotation
+                if (func_800B3FFC(f, 3) == 0 && func_800B3FFC(f, 2) != 0 || gCurrentStage == STAGE_VS) {
+                    poly->vertices[j].x = pos->x + vtxLocal->x * f->scale.x;
+                    poly->vertices[j].y = pos->y + vtxLocal->y * f->scale.y;
+                    poly->vertices[j].z = pos->z + vtxLocal->z * f->scale.z;
+                } else {
+                    // no scale
+                    poly->vertices[j].x = pos->x + vtxLocal->x;
+                    poly->vertices[j].y = pos->y + vtxLocal->y;
+                    poly->vertices[j].z = pos->z + vtxLocal->z;
+                }
+            }
+        }
+
+        switch (f->disp_type) {
+            case COLLIDER_DISP_TYPE_7:
+                poly->disp_type = COLLIDER_DISP_TYPE_7;
+                break;
+            case COLLIDER_DISP_TYPE_70:
+                poly->disp_type = COLLIDER_DISP_TYPE_70;
+                break;
+            default:
+                DummiedPrintf3("Unknown f->disp_type\n");
+                break;
+        }
+    }
+}
+#else
+#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/LoadPolygonsFromAsset.s")
+void LoadPolygonsFromAsset(Collider* f);
+#endif
+
+void RegisterCollider(Collider* f) {
+    Poly** pointerArray;
+    Poly* polygons;
+    s32 numPolygons;
+    s32 i;
+
+    if (f->polygons == NULL) {
+        LoadPolygonsFromAsset(f);
+    }
+    pointerArray = &sPolygons[sNumListedPolygons];
+    polygons = f->polygons;    
+    numPolygons = f->asset->numPolygons;
+    
+
+    if (sNumListedPolygons + numPolygons > 0x400) {
+        DummiedPrintf3("Too Many Listed Polygons\n");
+        // no return
+    }
+
+    for (i = 0; i < numPolygons; i++) {
+        *pointerArray++ = polygons++;
+    }
+
+    sNumListedPolygons += numPolygons;
 }
 
-void func_800C9728(void) {
-    func_800C9504();
+void RegisterCollider_Copy(Collider* f, s32 unused_arg) {
+    Poly** pointerArray;
+    Poly* polygons;
+    s32 numPolygons;
+    s32 i;
+
+    if (f->polygons == NULL) {
+        LoadPolygonsFromAsset(f);
+    }
+    pointerArray = &sPolygons[sNumListedPolygons];
+    polygons = f->polygons;    
+    numPolygons = f->asset->numPolygons;    
+
+    if (sNumListedPolygons + numPolygons > 0x400) {
+        DummiedPrintf3("Too Many Listed Polygons\n");
+        // no return
+    }
+
+    for (i = 0; i < numPolygons; i++) {
+        *pointerArray++ = polygons++;
+    }
+
+    sNumListedPolygons += numPolygons;
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9748.s")
+void RegisterFirstCollider(Collider* f) {
+    sNumListedPolygons = 0;
+    RegisterCollider(f);
+}
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C982C.s")
+void RegisterNextCollider(Collider* f) {
+    RegisterCollider(f);
+}
+
+s32 RegisterCollidersIntersectingRect(Rect3D* rect, s32 disp_mask, s32 unk_mask) {
+    s32 i;
+    Collider** ptr;
+    s32 total = 0;
+
+    sNumListedPolygons = 0;
+    ptr = D_80240898;
+    for (i = 0; i < gFeildCount; i++, ptr++) {
+        Collider* c = *ptr;
+
+        if ((c->unk_114 & unk_mask) && (c->disp_type & disp_mask)) {
+            if (IfRectsIntersect(rect, &c->unk_CC) == 0) {
+                continue;
+            }
+
+            RegisterCollider(c);
+            total++;
+        }
+        if (1) {// TODO: fake match
+        }
+    }
+    if (ptr) { // TODO: fake match
+    } 
+    return total;
+}
+
+s32 func_800C982C(Rect3D* rect, PlayerActor* player) {
+    Collider** ptr;
+    s32 i;    
+    s32 total = 0;
+
+    sNumListedPolygons = 0;
+    ptr = D_80240898;
+    for (i = 0; i < gFeildCount; i++, ptr++) {
+        Collider* c = *ptr;
+
+        if (c->typeMaybe == COLLIDER_TYPE_33 && player->squishTimer != 0) {
+            continue;
+        }
+        if ((c->unk_114 & 2) && (c->disp_type & 0x77)) {
+            if (IfRectsIntersect(rect, &c->unk_CC) == 0) {
+                continue;
+            }
+            if (i && i && i) { // TODO: fake match
+            }
+            RegisterCollider(c);
+            total++;
+        }
+    }
+    return total;
+}
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9928.s")
+/*s32 func_800C9928(Rect3D* rect, s32 arg1, s32 arg2) {
+    Collider** ptr;
+    s32 i;    
+    s32 total = 0;
+
+    sNumListedPolygons = 0;
+    ptr = D_80240898;
+    for (i = 0; i < gFeildCount; i++, ptr++) {
+        Collider* c = *ptr;
+
+        if ((c->unk_114 & arg2) && c->unk_124 != 1 && (c->disp_type & arg1)) {
+            if (IfRectsIntersect(rect, &c->unk_CC) == 0) {
+                continue;
+            }
+            RegisterCollider(c);
+            total++;
+        }
+    }
+    return total;
+}*/
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9A24.s")
 
@@ -279,7 +527,7 @@ Vec3f* func_800D00DC(Vec3f* arg0, Collider* arg1) {
         Vec3f_Zero(&sp24);
     } else {
         temp_v1 = &D_80236980[arg1->unk80];
-        if (((temp_v1->unk_10 == 0x14) || (temp_v1->unk_10 == 0x15) || (temp_v1->unk_10 == 0x16)) && (arg1->unk_11C != 4)) {
+        if (((temp_v1->typeMaybe == 0x14) || (temp_v1->typeMaybe == 0x15) || (temp_v1->typeMaybe == 0x16)) && (arg1->unk_11C != 4)) {
             sp24.x = temp_v1->unk_8C;
             sp24.y = temp_v1->unk_90;
             sp24.z = temp_v1->unk_94;
@@ -438,7 +686,7 @@ void func_800D71E8(f32 x1, f32 x2, f32 y1, f32 y2, f32 z1, f32 z2) {
     
     // ensure max > min
     OrderRectBounds(&r);
-    func_800C9748(&r, 0x77, 2); //unknown
+    RegisterCollidersIntersectingRect(&r, 0x77, 2); //unknown
 }
 
 s32 func_800D7248(f32 x, f32 y, f32 z, f32 arg3, f32 arg4, f32* outX, f32* arg6, f32* arg7) {

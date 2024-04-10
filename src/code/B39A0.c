@@ -2,7 +2,7 @@
 
 void func_800D85A0(Collider* arg0, s32 sfxID, s32 arg2) {
     if (((arg0->unk_00 + D_801749A0) % arg2) == 0) {
-        func_80088698(PLAYSFXAT(sfxID, arg0->sfxPos, 0, 0));
+        func_80088698(PLAYSFXAT(sfxID, arg0->pos, 0, 0));
     }
 }
 
@@ -14,17 +14,17 @@ void func_800D8628(Collider* arg0, s32 sfxID, s32 arg2) {
 
 void func_800D86A4(Collider* arg0, s32 sfxID0, s32 sfxID1, s32 arg3) {
     if ((arg0->unk_B4 == 0) && (arg0->unk_BC == 1) && (arg0->unk_C0 == 0)) {
-        func_80088698(PLAYSFXAT(sfxID0, arg0->sfxPos, 0, 0));
+        func_80088698(PLAYSFXAT(sfxID0, arg0->pos, 0, 0));
         return;
     }
     if ((arg0->unk_BC == 1) && (((arg0->unk_00 + D_801749A0) % arg3) == 0) && (sfxID1 >= 0)) {
-        func_80088698(PLAYSFXAT(sfxID1, arg0->sfxPos, 0, 0));
+        func_80088698(PLAYSFXAT(sfxID1, arg0->pos, 0, 0));
     }
 }
 
 void func_800D87A4(Collider* arg0, s32 sfxID) {
     if (arg0->unk_B8 == 1) {
-        func_80088698(PLAYSFXAT(sfxID, arg0->sfxPos, 0, 0));
+        func_80088698(PLAYSFXAT(sfxID, arg0->pos, 0, 0));
     }
 }
 
@@ -37,7 +37,7 @@ void func_800D87F8(Collider* arg0, s32 sfxID, s32 arg2) {
 void func_800D887C(Collider* arg0, s32 sfxID, s32 arg2) {
     s32 new_var;
     if (((new_var = arg0->unk_00) == D_80168E24) && (((new_var + D_801749A0) % arg2) == 0)) {
-        func_80088698(PLAYSFXAT(sfxID, arg0->sfxPos, 0, 0));
+        func_80088698(PLAYSFXAT(sfxID, arg0->pos, 0, 0));
     }
 }
 
@@ -153,7 +153,7 @@ void func_800D8B28(Collider* arg0, s32 sfxID, s32 arg2, f32 arg3, f32 arg4, f32 
 
 void func_800D8CF0(Collider* arg0, s32 sfxID) {
     if ((func_800B34D0(arg0->unk_AC) != 0) && (arg0->unk_B0 != 0)) {
-        func_80088698(PLAYSFXAT(sfxID, arg0->sfxPos,0, 0));
+        func_80088698(PLAYSFXAT(sfxID, arg0->pos,0, 0));
         arg0->unk_B0 = 0;
     }
 }

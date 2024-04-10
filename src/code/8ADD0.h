@@ -62,7 +62,7 @@ void func_800B5D68(Collider*, s32);
 s32 IsNotPickup(Actor* actor);
 s32 func_800B07E4(void);
 void func_800B5D68(Collider*, s32);  
-void func_800B2E40(unkSpriteStruct5*);
+void func_800B2E40(Collider*);
 void EraseRoomItem(s32);
 void func_800C1204(s32, PlayerActor*, s32, s32, s32); 
 
@@ -77,7 +77,7 @@ extern unk801B3178* D_801B3178;
 extern unk8020D908 D_8020D908;
 extern unkStruct20 D_802039B8[];
 extern s32 D_80206CF4;
-extern unkSpriteStruct5* D_80240898;
+extern Collider* D_80240898[];
 extern f32 D_8010FB50;
 //extern s32 D_80168DFC;
 //extern s32 D_80168E14;
