@@ -643,7 +643,7 @@ Vec3f* GetCollisionPointAtDistance(Vec3f* outVec, Vec3f point, TouchedPolygon* t
     return outVec;
 }
 
-Vec3f* GetCollisionPoint(Vec3f* collisionPoint, Vec3f point, f32 radius, s32 arg5) {
+Vec3f* GetClosestAvailablePoint(Vec3f* collisionPoint, Vec3f point, f32 radius, s32 arg5) {
     Poly* lastPoly;
     s32 i;
     TouchedPolygon* closest;
@@ -669,10 +669,7 @@ Vec3f* GetCollisionPoint(Vec3f* collisionPoint, Vec3f point, f32 radius, s32 arg
             }
 
             func_800CA4BC(closest);
-            // it doesn't make sense
-            // we got the polygon which is at distance < radius
-            // why do we find the point which is exactly at distance = radius
-            // this point is further from polygon than the original point
+            // find the point which is exactly at distance = radius
             GetCollisionPointAtDistance(&point, point, closest, radius);
             lastPoly = closest->poly;
         }
@@ -1317,7 +1314,7 @@ void func_800D73BC(f32* x, f32* y, f32* z, f32 arg3) {
     srcVec.z = *z;
     
     //wrong number of args(?)
-    GetCollisionPoint(&destVec, srcVec, arg3, 0x77);
+    GetClosestAvailablePoint(&destVec, srcVec, arg3, 0x77);
     
     *x = destVec.x;
     *y = destVec.y;

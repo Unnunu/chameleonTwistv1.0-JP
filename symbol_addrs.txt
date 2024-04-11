@@ -1199,7 +1199,7 @@ RegisterCollider = 0x800C9504;
 RegisterFirstCollider = 0x800C9704;
 RegisterNextCollider = 0x800C9728;
 RegisterCollidersIntersectingRect = 0x800C9748;
-GetCollisionPoint = 0x800CA734;
+GetClosestAvailablePoint = 0x800CA734;
 SearchPolyBelow = 0x800CAF88;
 
 //rodata stuff
