@@ -333,7 +333,7 @@ typedef struct Poly {
     /* 0x6C */ f32 triangularCoorsMatrix[2][2]; // matrix to convert from local system to triangular system
                                                 // where 3 vertices have coordinates (0, 0), (1, 0) and (0, 1)
     /* 0x7C */ Vec2f verticesLocal[3]; // local coordinates
-    /* 0x94 */ char unk_94[12];
+    /* 0x94 */ Vec3f intersection;
 } Poly; // sizeof 0xA0
 
 typedef struct Collider {

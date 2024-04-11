@@ -1199,6 +1199,8 @@ RegisterCollider = 0x800C9504;
 RegisterFirstCollider = 0x800C9704;
 RegisterNextCollider = 0x800C9728;
 RegisterCollidersIntersectingRect = 0x800C9748;
+GetCollisionPoint = 0x800CA734;
+SearchPolyBelow = 0x800CAF88;
 
 //rodata stuff
 D_8010B484 = 0x8010B484; // type:f32 force_migration:True size:0x08

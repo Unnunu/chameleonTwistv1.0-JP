@@ -33,7 +33,7 @@ extern Collider* D_80240898[];
 
 typedef struct TouchedPolygon {
     /* 0x00 */ Poly* poly;
-    /* 0x04 */ s32 isOutside;
+    /* 0x04 */ s32 isOutside; // probably has different meaning
     /* 0x08 */ f32 distance;
     /* 0x0C */ f32 height;
     /* 0x10 */ Vec3f point;
@@ -46,7 +46,8 @@ s32 gShadowCount;
 Vec3f D_80248518;
 TouchedPolygon sTouchedPolygons[32];
 s32 sNumTouchedPolygons;
-char D_802488B0[0x10];
+Vec3f D_802488B0;
+char D_802488BC_pad[0x4];
 char gHasShadow[0x100];
 char D_802489C0[0x08];
 Vec3f D_802489C8[8];
@@ -57,14 +58,18 @@ void func_800D3854(PlayerActor*, Tongue*, Camera*, Vec3f*, Vec3f*, s32);
 void func_800D5394(PlayerActor*, Tongue*, Camera*, Vec3f*, Vec3f*, s32);
 void func_800D6864(PlayerActor*, Tongue*, Camera*, Vec3f*, Vec3f*);
 void func_800D69D0(s32, PlayerActor*, Tongue*, Camera*, Vec3f*, Vec3f*, s32);
-Collider* func_800CAF88(Vec3f, f32, f32);
-Collider* SearchPolygonBetween(Vec3f, Vec3f, s32, s32, s32);
+Poly* SearchPolyBelow(Vec3f, f32, f32);
+Poly* SearchPolygonBetween(Vec3f, Vec3f, s32, s32, s32);
 void OrderRectBounds(Rect3D*);
-void func_800CA734(Vec3f*, Vec3f, f32, s32);
+Vec3f* func_800CA734(Vec3f*, Vec3f, f32, s32);
 void func_800CBC08(Actor*);
 void func_800CC814(Actor*, Vec3f, s32);
 Vec3f* LocalToWorld(Vec3f* outVec, Vec3f vec, Poly* poly);
 Vec3f* WorldToLocal(Vec3f* outVec, Vec3f vec, Poly* poly);
+s32 IsOnPolygon(Vec3f vec, Poly* poly);
+s32 Vec3f_EqualsCopy(Vec3f vec1, Vec3f vec2);
+s32 IsInsidePolygon(Vec3f vec, Poly* poly);
+void Vec3f_Set(Vec3f* vec, f32 x, f32 y, f32 z);
 
 void ClearPolygon(void) {
     sNumPolygons = 0;
@@ -490,8 +495,7 @@ void MinimunDistance(Vec3f point, Poly* poly, f32 unused, f32* distance, s32* is
     }
 }
 
-//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/ListUpTouchedPolygon.s")
-void ListUpTouchedPolygon(Vec3f point, f32 radius) {
+void ListUpTouchedPolygon(Vec3f point, f32 radius, s32 unused) {
     Poly** ptr;
     s32 isOutside;
     f32 distance;
@@ -521,8 +525,7 @@ void ListUpTouchedPolygon(Vec3f point, f32 radius) {
         }
 
         func_800D79E4(poly, 2);
-        if (i && i && i) {
-            
+        if (i && i && i) { // TODO: fake match            
         }
         dx = point.x - poly->vertices[0].x;
         dy = point.y - poly->vertices[0].y;
@@ -556,21 +559,391 @@ void ListUpTouchedPolygon(Vec3f point, f32 radius) {
     }
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CA3FC.s")
+TouchedPolygon* GetClosestTouchedPolygon(void) {
+    s32 i;
+    TouchedPolygon* best;
+    TouchedPolygon* curr;
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CA4BC.s")
+    if (sNumTouchedPolygons == 0) {
+        return NULL;
+    }
+    if (sNumTouchedPolygons == 1) {
+        return &sTouchedPolygons[0];
+    }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CA5B4.s")
+    curr = &sTouchedPolygons[1];
+    best = &sTouchedPolygons[0];    
+    for (i = 1; i < sNumTouchedPolygons; curr++, i++) {
+        if (curr->distance > best->distance) {
+            continue;
+        }
+        // if two points outside of triangle and have same distance, prefer the one which is farther from the plane
+        // in all other cases prefer the last one no matter if it's inside or outside
+        if (curr->distance == best->distance && curr->isOutside && best->isOutside && curr->height < best->height) {
+            continue;
+        }
+        
+        best = curr;
+    }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CA734.s")
+    return best;
+}
 
+void func_800CA4BC(TouchedPolygon* touched) {
+    s32 i;
+    TouchedPolygon* curr;
+
+    if (touched->isOutside == FALSE) {
+        return;
+    }
+
+    curr = sTouchedPolygons;
+    for (i = 0; i < sNumTouchedPolygons; curr++, i++) {
+        if (curr == touched) {
+            continue;
+        }
+
+        if (IsOnPolygon(touched->point, curr->poly) && Vec3f_EqualsCopy(curr->poly->rotationMatrix.normal, touched->poly->rotationMatrix.normal)) {
+            touched->isOutside = FALSE;
+            return;
+        }
+    }
+}
+
+Vec3f* GetCollisionPointAtDistance(Vec3f* outVec, Vec3f point, TouchedPolygon* touched, f32 distance) {
+    Vec3f touchPoint;
+    Vec3f vec;
+    f32 coef;
+    f32 unused;
+    Vec3f sp34;
+
+    if (touched->isOutside) {
+        touchPoint = touched->point;
+        vec.x = point.x - touchPoint.x;
+        vec.y = point.y - touchPoint.y;
+        vec.z = point.z - touchPoint.z;
+
+        coef = distance / NORM_3(vec.x, vec.y, vec.z);
+
+        vec.x *= coef;
+        vec.y *= coef;
+        vec.z *= coef;
+
+        point.x = touchPoint.x + vec.x;
+        point.y = touchPoint.y + vec.y;
+        point.z = touchPoint.z + vec.z;
+    } else {
+        Poly* poly = touched->poly;
+        WorldToLocal(&sp34, point, poly);
+        sp34.z = distance;
+        LocalToWorld(&point, sp34, poly);
+    }
+
+    *outVec = point;
+    return outVec;
+}
+
+Vec3f* GetCollisionPoint(Vec3f* collisionPoint, Vec3f point, f32 radius, s32 arg5) {
+    Poly* lastPoly;
+    s32 i;
+    TouchedPolygon* closest;
+    Vec3f origPoint;
+
+    if (sNumListedPolygons == 0) {
+        Vec3f_Zero(&D_802488B0);
+        *collisionPoint = point;
+        return collisionPoint;
+    } else {
+        origPoint = point;
+        i = 0;
+        lastPoly = NULL;
+        for (; i < 4; i++) {
+            ListUpTouchedPolygon(point, radius, arg5);
+            if (sNumTouchedPolygons == 0) {
+                break;
+            }
+
+            closest = GetClosestTouchedPolygon();
+            if (closest->poly == lastPoly) {
+                break;
+            }
+
+            func_800CA4BC(closest);
+            // it doesn't make sense
+            // we got the polygon which is at distance < radius
+            // why do we find the point which is exactly at distance = radius
+            // this point is further from polygon than the original point
+            GetCollisionPointAtDistance(&point, point, closest, radius);
+            lastPoly = closest->poly;
+        }
+
+        D_802488B0.x = point.x - origPoint.x;
+        D_802488B0.y = point.y - origPoint.y;
+        D_802488B0.z = point.z - origPoint.z;
+        *collisionPoint = point;
+        return collisionPoint;
+    }
+}
+
+#ifdef NON_MATCHING
+Poly* SearchPolygonBetween(Vec3f vec1, Vec3f vec2, s32 arg3, s32 oneSided, s32 findClosest) {
+    Rect3D bbox;
+    f32 lowestRatio;
+    Vec3f retVec;
+    Vec3f vec1_rel;
+    Vec3f vec2_rel;
+    Vec3f intersectionLocal;
+    Poly* bestPoly;
+    Poly* curr;
+    Poly** ptr;
+    s32 i;
+    f32 height1;
+    f32 height2;
+    f32 ratio;
+    f32 midX, midY, midZ;
+
+    if (sNumListedPolygons == 0) {
+        return NULL;
+    }
+
+    lowestRatio = 1.0f;
+    bestPoly = NULL;
+    CalculateBoundingRectFromVectors(vec1, vec2, &bbox);
+    
+    ptr = sPolygons;
+    for (i = 0; i < sNumListedPolygons; ptr++, i++) {
+        curr = *ptr;
+
+        func_800D79E4(curr, 1);
+        if (!IfPolyBoundIntersectsRect(curr, &bbox)) {
+            continue;
+        }
+
+        func_800D79E4(curr, 2);
+        if (oneSided) {
+            // first point above polygon, second point below polygon
+            vec1_rel.x = vec1.x - curr->vertices[0].x;
+            vec1_rel.y = vec1.y - curr->vertices[0].y;
+            vec1_rel.z = vec1.z - curr->vertices[0].z;
+            height1 = vec1_rel.z * curr->rotationMatrix.normal.z + (vec1_rel.x * curr->rotationMatrix.normal.x + vec1_rel.y * curr->rotationMatrix.normal.y);
+            if (height1 <= 0.0) {
+                continue;
+            }
+            vec2_rel.x = vec2.x - curr->vertices[0].x;
+            vec2_rel.y = vec2.y - curr->vertices[0].y;
+            vec2_rel.z = vec2.z - curr->vertices[0].z;
+            height2 = vec2_rel.z * curr->rotationMatrix.normal.z + (vec2_rel.x * curr->rotationMatrix.normal.x + vec2_rel.y * curr->rotationMatrix.normal.y);
+            if (height2 >= 0.0) {
+                continue;
+            }
+        } else {
+            vec1_rel.x = vec1.x - curr->vertices[0].x;
+            vec1_rel.y = vec1.y - curr->vertices[0].y;
+            vec1_rel.z = vec1.z - curr->vertices[0].z;
+            height1 = vec1_rel.z * curr->rotationMatrix.normal.z + (vec1_rel.x * curr->rotationMatrix.normal.x + vec1_rel.y * curr->rotationMatrix.normal.y);
+            vec2_rel.x = vec2.x - curr->vertices[0].x;
+            vec2_rel.y = vec2.y - curr->vertices[0].y;
+            vec2_rel.z = vec2.z - curr->vertices[0].z;
+            height2 = vec2_rel.z * curr->rotationMatrix.normal.z + (vec2_rel.x * curr->rotationMatrix.normal.x + vec2_rel.y * curr->rotationMatrix.normal.y);
+            if (height1 * height2 >= 0.0) {
+                // two point on the same side
+                continue;
+            }
+        }
+
+        if (height1 == height2) {
+            ratio = 0.5f;
+        } else {
+            ratio = height1 / (height1 - height2);
+        }
+        if (ratio < 0.0) {
+            DummiedPrintf3("SearchPolygonBetween(): ratio < 0\n");
+            ratio = 1.0f;
+        }
+        if (ratio > 1.0) {
+            DummiedPrintf3("SearchPolygonBetween(): ratio > 1\n");
+            ratio = 1.0f;
+        }
+
+        if (ratio >= lowestRatio) {
+            continue;
+        }
+        
+        func_800D79E4(curr, 3);
+        if (curr->unk_00 < 0) {
+            continue;
+        }
+
+        midX = vec2_rel.x * ratio + vec1_rel.x * (1.0 - ratio);
+        midY = vec2_rel.y * ratio + vec1_rel.y * (1.0 - ratio);
+        midZ = vec2_rel.z * ratio + vec1_rel.z * (1.0 - ratio);
+        // world to local
+        intersectionLocal.x = curr->rotationMatrix.vec1.x * midX + curr->rotationMatrix.vec1.y * midY + curr->rotationMatrix.vec1.z * midZ;
+        intersectionLocal.y = curr->rotationMatrix.vec2.x * midX + curr->rotationMatrix.vec2.y * midY + curr->rotationMatrix.vec2.z * midZ;
+        intersectionLocal.z = 0.0f;
+        
+        if (!IsInsidePolygon(intersectionLocal, curr)) {
+            continue;
+        }
+
+        lowestRatio = ratio;
+        bestPoly = curr;
+        retVec = intersectionLocal;
+        if (findClosest != TRUE) {
+            break;
+        }
+    }
+
+    if (bestPoly != NULL) {
+        // local to world
+        bestPoly->intersection.x = bestPoly->vertices[0].x + (retVec.x * curr->rotationMatrix.vec1.x + retVec.y * curr->rotationMatrix.vec2.x);
+        bestPoly->intersection.y = bestPoly->vertices[0].y + (retVec.x * curr->rotationMatrix.vec1.y + retVec.y * curr->rotationMatrix.vec2.y);
+        bestPoly->intersection.z = bestPoly->vertices[0].z + (retVec.x * curr->rotationMatrix.vec1.z + retVec.y * curr->rotationMatrix.vec2.z);
+    }
+
+    return bestPoly;
+}
+#else
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/SearchPolygonBetween.s")
+Poly* SearchPolygonBetween(Vec3f vec1, Vec3f vec2, s32 arg3, s32 oneSided, s32 findClosest);
+#endif
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CAE08.s")
+s32 RayCastBetween(f32 x1, f32 y1, f32 z1, f32 x2, f32 y2, f32 z2, f32* iX, f32* iY, f32* iZ) {
+    Rect3D rect;
+    Vec3f vecA;
+    Vec3f vecB;
+    Poly* poly;
+    
+    Vec3f_Set(&vecA, x1, y1, z1);
+    Vec3f_Set(&vecB, x2, y2, z2);
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CAF88.s")
+    if (x1 < x2) {
+        rect.min.x = x1;
+        rect.max.x = x2;
+    } else {
+        rect.min.x = x2;
+        rect.max.x = x1;
+    }
+    if (y1 < y2) {
+        rect.min.y = y1;
+        rect.max.y = y2;
+    } else {
+        rect.min.y = y2;
+        rect.max.y = y1;
+    }
+    if (z1 < z2) {
+        rect.min.z = z1;
+        rect.max.z = z2;
+    } else {
+        rect.min.z = z2;
+        rect.max.z = z1;
+    }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CB294.s")
+    RegisterCollidersIntersectingRect(&rect, COLLIDER_DISP_TYPE_7 | COLLIDER_DISP_TYPE_70, 2);
+    poly = SearchPolygonBetween(vecA, vecB, COLLIDER_DISP_TYPE_7 | COLLIDER_DISP_TYPE_70, FALSE, TRUE);
+    if (poly == NULL) {
+        return FALSE;
+    }
+    *iX = poly->intersection.x;
+    *iY = poly->intersection.y;
+    *iZ = poly->intersection.z;
+    return TRUE;
+}
+
+#ifdef NON_MATCHING
+Poly* SearchPolyBelow(Vec3f point, f32 maxYOffset, f32 minYOffset) {
+    s32 i;
+    Vec3f highPoint;
+    Vec3f lowPoint;    
+    Poly** ptr;
+    Poly* retPoly;
+    f32 dx, dz, dy;
+    f32 lowY;
+    Rect3D* bbox;
+    Vec3f localIntersection;
+
+    if (sNumListedPolygons == 0) {
+        return NULL;
+    }
+
+    retPoly = NULL;
+    highPoint = point;
+    highPoint.y += maxYOffset;
+    lowPoint = point;
+    lowPoint.y += minYOffset;
+    lowY = lowPoint.y;
+
+    ptr = sPolygons;
+    for (i = 0; i < sNumListedPolygons; ptr++, i++) {
+        Poly* curr = *ptr;
+
+        func_800D79E4(curr, 1);
+        bbox = &curr->boundBox;
+        if (point.x < bbox->min.x ||
+            point.x > bbox->max.x ||
+            point.z < bbox->min.z ||
+            point.z > bbox->max.z ||
+            highPoint.y < bbox->min.y ||
+            lowY > bbox->max.y)
+        {
+            continue;
+        }
+
+        // need only polygons facing up
+        func_800D79E4(curr, 2);
+        if (curr->rotationMatrix.normal.y <= 0.0) {
+            continue;
+        }
+
+        // project point down on the polygon
+        dx = point.x - curr->vertices[0].x;
+        dz = point.z - curr->vertices[0].z;
+        dy = -(curr->rotationMatrix.normal.x * dx + curr->rotationMatrix.normal.z * dz) / curr->rotationMatrix.normal.y;
+        if (curr->vertices[0].y + dy < lowY || curr->vertices[0].y + dy > highPoint.y) {
+            continue;
+        }
+
+        func_800D79E4(curr, 3);
+        if (curr->unk_00 < 0) {
+            continue;
+        }
+
+        // world to local
+        localIntersection.x = curr->rotationMatrix.vec1.z * dz +  (curr->rotationMatrix.vec1.x * dx + curr->rotationMatrix.vec1.y * dy);
+        localIntersection.y = curr->rotationMatrix.vec2.z * dz +  (curr->rotationMatrix.vec2.x * dx + curr->rotationMatrix.vec2.y * dy);
+        localIntersection.z = 0.0f;
+        if (!IsInsidePolygon(localIntersection, curr)) {
+            continue;
+        }
+
+        retPoly = curr;
+        curr->intersection.y = lowY = curr->vertices[0].y + dy;
+        curr->intersection.x = curr->vertices[0].x + dx;        
+        curr->intersection.z = curr->vertices[0].z + dz;
+    }
+
+    return retPoly;
+}
+#else
+#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/SearchPolyBelow.s")
+Poly* SearchPolyBelow(Vec3f point, f32 maxYOffset, f32 minYOffset);
+#endif
+
+Poly* func_800CB294(Vec3f point, f32 arg3) {
+    f32 d = arg3 * 20.0;
+    f32 unused[1];
+    Vec3f sp44;
+    Rect3D rect;    
+
+    sp44.x = point.x;
+    sp44.y = point.y - d;
+    sp44.z = point.z;
+
+    CalculateBoundingRectFromVectors(point, sp44, &rect);
+    rect.max.y += 10.0;
+    RegisterCollidersIntersectingRect(&rect, 0x77, 2);
+    return SearchPolyBelow(point, 10.0f, -d);
+}
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/Shadows_Reset.s")
 
@@ -896,19 +1269,19 @@ void func_800D71E8(f32 x1, f32 x2, f32 y1, f32 y2, f32 z1, f32 z2) {
 s32 func_800D7248(f32 x, f32 y, f32 z, f32 arg3, f32 arg4, f32* outX, f32* arg6, f32* arg7) {
     Vec3f vec;
     s32 var_v1;
-    Collider* collider;
+    Poly* poly;
 
     vec.x = x;
     vec.y = y;
     vec.z = z;
     
-    collider = func_800CAF88(vec, arg3, arg4);
+    poly = SearchPolyBelow(vec, arg3, arg4);
     
     // if a collider was found assign its position to the output variables then return 1 for success
-    return (collider != NULL) ?
-        *outX = collider->unk_94,
-        *arg6 = collider->unk_98,
-        *arg7 = collider->unk_9C,
+    return (poly != NULL) ?
+        *outX = poly->intersection.x,
+        *arg6 = poly->intersection.y,
+        *arg7 = poly->intersection.z,
         1 :
         0;
 }
@@ -916,7 +1289,7 @@ s32 func_800D7248(f32 x, f32 y, f32 z, f32 arg3, f32 arg4, f32* outX, f32* arg6,
 s32 func_800D72DC(f32 x1, f32 y1, f32 z1, f32 x2, f32 y2, f32 z2, f32* outX, f32* outY, f32* outZ) {
     Vec3f vecOne;
     Vec3f vecTwo;
-    Collider* collider;
+    Poly* poly;
 
     vecOne.x = x1;
     vecOne.y = y1;
@@ -926,11 +1299,11 @@ s32 func_800D72DC(f32 x1, f32 y1, f32 z1, f32 x2, f32 y2, f32 z2, f32* outX, f32
     vecTwo.y = y2;
     vecTwo.z = z2;
     
-    collider = SearchPolygonBetween(vecOne, vecTwo, 0x77, 1, 1);
-    return (collider != NULL) ?
-        *outX = collider->unk_94,
-        *outY = collider->unk_98,
-        *outZ = collider->unk_9C,
+    poly = SearchPolygonBetween(vecOne, vecTwo, 0x77, 1, 1);
+    return (poly != NULL) ?
+        *outX = poly->intersection.x,
+        *outY = poly->intersection.y,
+        *outZ = poly->intersection.z,
         1 :
         0;
 }
@@ -944,7 +1317,7 @@ void func_800D73BC(f32* x, f32* y, f32* z, f32 arg3) {
     srcVec.z = *z;
     
     //wrong number of args(?)
-    func_800CA734(&destVec, srcVec, arg3, 0x77);
+    GetCollisionPoint(&destVec, srcVec, arg3, 0x77);
     
     *x = destVec.x;
     *y = destVec.y;
