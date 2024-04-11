@@ -31,14 +31,21 @@ extern Poly* sPolygons[1024];
 extern s32 sNumListedPolygons;
 extern Collider* D_80240898[];
 
+typedef struct TouchedPolygon {
+    /* 0x00 */ Poly* poly;
+    /* 0x04 */ s32 isOutside;
+    /* 0x08 */ f32 distance;
+    /* 0x0C */ f32 height;
+    /* 0x10 */ Vec3f point;
+} TouchedPolygon; //sizeof 0x1C
+
 /* Migrated BSS */
 //TODO: type this data correctly
 char gShadows[0xC00];
 s32 gShadowCount;
 Vec3f D_80248518;
-char D_80248528[0x18];
-char D_80248540[0x368];
-s32 D_802488A8;
+TouchedPolygon sTouchedPolygons[32];
+s32 sNumTouchedPolygons;
 char D_802488B0[0x10];
 char gHasShadow[0x100];
 char D_802489C0[0x08];
@@ -56,6 +63,8 @@ void OrderRectBounds(Rect3D*);
 void func_800CA734(Vec3f*, Vec3f, f32, s32);
 void func_800CBC08(Actor*);
 void func_800CC814(Actor*, Vec3f, s32);
+Vec3f* LocalToWorld(Vec3f* outVec, Vec3f vec, Poly* poly);
+Vec3f* WorldToLocal(Vec3f* outVec, Vec3f vec, Poly* poly);
 
 void ClearPolygon(void) {
     sNumPolygons = 0;
@@ -376,18 +385,176 @@ s32 IfPolyBoundIntersectsRect(Poly* poly, Rect3D* rect) {
     return 1;
 }
 
-//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800C9B7C.s")
-f32 func_800C9B7C(f32 arg0, f32 arg1, f32 arg2, f32 arg3, f32 arg4) {
-    arg0 -= arg3;
-    arg1 -= arg4;
-    return NORM_3(arg0, arg1, arg2);
+f32 DistanceWithPoint(Vec3f point3D, Vec2f point2D) {
+    return NORM_3(point3D.x - point2D.x, point3D.y - point2D.y, point3D.z);
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/DistanceWithLine.s")
+// it is assumed that the line lies in the plane z=0 
+void DistanceWithLine(Vec3f point, Vec2f linePoint1, Vec2f linePoint2, f32* distance, Vec3f* worldPos, Poly* poly) {
+    Vec2f line;
+    f32 det;
+    f32 closestPointAlpha;
+    Vec2f vec1;
+    Vec2f unused;
+    Vec2f closestPoint;
+    Vec3f closestPoint3D;
+    
+    vec1.x = point.x - linePoint1.x;
+    vec1.y = point.y - linePoint1.y;
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/MinimunDistance.s")
+    line.x = linePoint2.x - linePoint1.x;
+    line.y = linePoint2.y - linePoint1.y;
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/ListUpTouchedPolygon.s")
+    det = SUM_OF_SQUARES(line.x, line.y);
+
+    if (det == 0.0f) {
+        DummiedPrintf3("DistanceWithLine(): determinant is 0\n");
+    }
+
+    closestPointAlpha = (line.x * vec1.x + line.y * vec1.y) / det;
+
+    if (closestPointAlpha <= 0.0f) {
+        closestPoint = linePoint1;
+    } else if (closestPointAlpha >= 1.0f) {
+        closestPoint = linePoint2;
+    } else {
+        closestPoint.x = (1.0f - closestPointAlpha) * linePoint1.x + closestPointAlpha * linePoint2.x;
+        closestPoint.y = (1.0f - closestPointAlpha) * linePoint1.y + closestPointAlpha * linePoint2.y;
+    }
+
+    *distance = DistanceWithPoint(point, closestPoint);
+
+    closestPoint3D.x = closestPoint.x;
+    closestPoint3D.y = closestPoint.y;
+    closestPoint3D.z = 0.0f;
+    LocalToWorld(worldPos, closestPoint3D, poly);
+}
+
+void MinimunDistance(Vec3f point, Poly* poly, f32 unused, f32* distance, s32* isOutside, Vec3f* closestPoint) {
+    s32 type;
+    f32 x_0, y_0;
+
+    WorldToLocal(&point, point, poly);
+
+    type = 0;
+    x_0 = poly->triangularCoorsMatrix[0][0] * point.x + poly->triangularCoorsMatrix[1][0] * point.y;
+    y_0 = poly->triangularCoorsMatrix[0][1] * point.x + poly->triangularCoorsMatrix[1][1] * point.y;
+    if (x_0 < 0.0f) {
+        type += 1;
+    }
+    if (y_0 < 0.0f) {
+        type += 2;
+    }
+    if (x_0 + y_0 > 1.0f) {
+        type += 4;
+    }
+
+    switch (type) {
+        case 0:
+            *closestPoint = point;
+            closestPoint->z = 0.0f;
+            LocalToWorld(closestPoint, *closestPoint, poly);
+            *distance = point.z;
+            *isOutside = FALSE;
+            break;
+        case 3:
+            *closestPoint = poly->vertices[0];
+            *distance = DistanceWithPoint(point, poly->verticesLocal[0]);
+            *isOutside = TRUE;
+            break;
+        case 6:
+            *closestPoint = poly->vertices[1];
+            *distance = DistanceWithPoint(point, poly->verticesLocal[1]);
+            *isOutside = TRUE;
+            break;
+        case 5:
+            *closestPoint = poly->vertices[2];
+            *distance = DistanceWithPoint(point, poly->verticesLocal[2]);
+            *isOutside = TRUE;
+            break;
+        case 2:
+            DistanceWithLine(point, poly->verticesLocal[0], poly->verticesLocal[1], distance, closestPoint, poly);
+            *isOutside = TRUE;
+            break;
+        case 4:
+            DistanceWithLine(point, poly->verticesLocal[1], poly->verticesLocal[2], distance, closestPoint, poly);
+            *isOutside = TRUE;
+            break;
+        case 1:
+            DistanceWithLine(point, poly->verticesLocal[2], poly->verticesLocal[0], distance, closestPoint, poly);
+            *isOutside = TRUE;
+            break;
+        default:
+            DummiedPrintf3("MinimunDistance(): invalid case\n");
+            break;
+    }
+}
+
+//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/ListUpTouchedPolygon.s")
+void ListUpTouchedPolygon(Vec3f point, f32 radius) {
+    Poly** ptr;
+    s32 isOutside;
+    f32 distance;
+    Vec3f closestPoint;
+    TouchedPolygon* touched;    
+    s32 i;
+    f32 height;
+    f32 dx, dy, dz;
+    Rect3D box;
+
+    sNumTouchedPolygons = 0;
+    touched = sTouchedPolygons;
+    box.min.x = point.x - radius;
+    box.max.x = point.x + radius;
+    box.min.y = point.y - radius;
+    box.max.y = point.y + radius;
+    box.min.z = point.z - radius;
+    box.max.z = point.z + radius;
+
+    ptr = sPolygons;
+    for (i = 0; i < sNumListedPolygons; ptr++, i++) {
+        Poly* poly = *ptr;
+        
+        func_800D79E4(poly, 1);
+        if (!IfPolyBoundIntersectsRect(poly, &box)) {
+            continue;
+        }
+
+        func_800D79E4(poly, 2);
+        if (i && i && i) {
+            
+        }
+        dx = point.x - poly->vertices[0].x;
+        dy = point.y - poly->vertices[0].y;
+        dz = point.z - poly->vertices[0].z;
+        height = dz * poly->rotationMatrix.normal.z + (dx * poly->rotationMatrix.normal.x + dy * poly->rotationMatrix.normal.y);
+        // polygons are always one-sided
+        if (height < 0 || height > radius) {
+            continue;
+        }
+
+        func_800D79E4(poly, 3);
+        if (poly->unk_00 < 0) {
+            continue;
+        }
+        MinimunDistance(point, poly, radius, &distance, &isOutside, &closestPoint);
+        if (distance > radius) {
+            continue;
+        }
+
+        if (sNumTouchedPolygons >= 32) {
+            DummiedPrintf3("ListUpTouchedPolygon(): Too Many\n");
+        }
+        
+        touched->poly = poly;
+        touched->isOutside = isOutside;
+        touched->distance = distance;
+        touched->height = height;
+        touched->point = closestPoint;
+        touched++;
+        sNumTouchedPolygons++;
+    }
+}
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CA3FC.s")
 
@@ -625,10 +792,10 @@ void func_800D4550(s32 arg0, s32 arg1, Poly* arg2, Vec3f* arg3, Vec3f* arg4) {
     Collision* temp_v0 = &gZoneCollisions[gCurrentZone];
 
     arg3->x = temp_v0->unkA4;
-    arg3->y = temp_v0->unkA8 + (temp_v0->unkD0 * arg2->unkVectorStruct.vec1.x);
+    arg3->y = temp_v0->unkA8 + (temp_v0->unkD0 * arg2->rotationMatrix.vec1.x);
     arg3->z = temp_v0->unkAC;
     arg4->x = temp_v0->unk98;
-    arg4->y = temp_v0->unk9C + (temp_v0->unkD0 * arg2->unkVectorStruct.vec1.x);
+    arg4->y = temp_v0->unk9C + (temp_v0->unkD0 * arg2->rotationMatrix.vec1.x);
     arg4->z = temp_v0->unkA0;
 }
 

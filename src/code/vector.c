@@ -210,13 +210,13 @@ Vec3f* ProjectOnPolygon(Vec3f* vec, f32 perspX, f32 perspY, f32 perspZ, Poly* po
     f32 p_x2;
 
     OnlyCheckPolyInfoLevel(poly, 2, "ProjectOnPolygon");
-    p_x = poly->unkVectorStruct.vec1.x;
-    p_x2 = poly->unkVectorStruct.vec2.x;
-    dotProduct = (poly->unkVectorStruct.vec1.z * perspZ) + ((perspX * p_x) + (perspY * poly->unkVectorStruct.vec1.y));
-    dist = (poly->unkVectorStruct.vec2.z * perspZ) + ((perspX * p_x2) + (perspY * poly->unkVectorStruct.vec2.y));
+    p_x = poly->rotationMatrix.vec1.x;
+    p_x2 = poly->rotationMatrix.vec2.x;
+    dotProduct = (poly->rotationMatrix.vec1.z * perspZ) + ((perspX * p_x) + (perspY * poly->rotationMatrix.vec1.y));
+    dist = (poly->rotationMatrix.vec2.z * perspZ) + ((perspX * p_x2) + (perspY * poly->rotationMatrix.vec2.y));
     vec_proj.x = (p_x2 * dist) + (dotProduct * p_x);
-    vec_proj.y = (poly->unkVectorStruct.vec2.y * dist) + (dotProduct * poly->unkVectorStruct.vec1.y);
-    vec_proj.z = (poly->unkVectorStruct.vec2.z * dist) + (dotProduct * poly->unkVectorStruct.vec1.z);
+    vec_proj.y = (poly->rotationMatrix.vec2.y * dist) + (dotProduct * poly->rotationMatrix.vec1.y);
+    vec_proj.z = (poly->rotationMatrix.vec2.z * dist) + (dotProduct * poly->rotationMatrix.vec1.z);
     *vec = vec_proj;
     return vec;
 }
@@ -239,9 +239,9 @@ Vec3f* WorldToLocal(Vec3f* outVec, Vec3f vec, Poly* poly) {
     vec.x = vec.x - poly->vertices[0].x;
     vec.y = vec.y - poly->vertices[0].y;
     vec.z = vec.z - poly->vertices[0].z;
-    temp_vec.x = (poly->unkVectorStruct.vec1.z * vec.z) + ((vec.x * poly->unkVectorStruct.vec1.x) + (vec.y * poly->unkVectorStruct.vec1.y));
-    temp_vec.y = (poly->unkVectorStruct.vec2.z * vec.z) + ((vec.x * poly->unkVectorStruct.vec2.x) + (vec.y * poly->unkVectorStruct.vec2.y));
-    temp_vec.z = (poly->unkVectorStruct.normal.z * vec.z) + ((vec.x * poly->unkVectorStruct.normal.x) + (vec.y * poly->unkVectorStruct.normal.y));
+    temp_vec.x = (poly->rotationMatrix.vec1.z * vec.z) + ((vec.x * poly->rotationMatrix.vec1.x) + (vec.y * poly->rotationMatrix.vec1.y));
+    temp_vec.y = (poly->rotationMatrix.vec2.z * vec.z) + ((vec.x * poly->rotationMatrix.vec2.x) + (vec.y * poly->rotationMatrix.vec2.y));
+    temp_vec.z = (poly->rotationMatrix.normal.z * vec.z) + ((vec.x * poly->rotationMatrix.normal.x) + (vec.y * poly->rotationMatrix.normal.y));
     *outVec = temp_vec;
 
     return outVec;
@@ -260,9 +260,9 @@ Vec3f* LocalToWorld(Vec3f* outVec, Vec3f vec, Poly* poly) {
     Vec3f temp_vec;
 
     OnlyCheckPolyInfoLevel(poly, 2, "LocalToWorld");
-    temp_vec.x = (poly->unkVectorStruct.normal.x * vec.z) + ((vec.x * poly->unkVectorStruct.vec1.x) + (vec.y * poly->unkVectorStruct.vec2.x));
-    temp_vec.y = (poly->unkVectorStruct.normal.y * vec.z) + ((vec.x * poly->unkVectorStruct.vec1.y) + (vec.y * poly->unkVectorStruct.vec2.y));
-    temp_vec.z = (poly->unkVectorStruct.normal.z * vec.z) + ((vec.x * poly->unkVectorStruct.vec1.z) + (vec.y * poly->unkVectorStruct.vec2.z));
+    temp_vec.x = (poly->rotationMatrix.normal.x * vec.z) + ((vec.x * poly->rotationMatrix.vec1.x) + (vec.y * poly->rotationMatrix.vec2.x));
+    temp_vec.y = (poly->rotationMatrix.normal.y * vec.z) + ((vec.x * poly->rotationMatrix.vec1.y) + (vec.y * poly->rotationMatrix.vec2.y));
+    temp_vec.z = (poly->rotationMatrix.normal.z * vec.z) + ((vec.x * poly->rotationMatrix.vec1.z) + (vec.y * poly->rotationMatrix.vec2.z));
     temp_vec.x += poly->vertices[0].x;
     temp_vec.y += poly->vertices[0].y;
     temp_vec.z += poly->vertices[0].z;
@@ -282,8 +282,8 @@ s32 IsInsidePolygon(Vec3f vec, Poly* poly) {
    f32 x_0;
    f32 y_0;
    OnlyCheckPolyInfoLevel(poly, 3, "IsInsidePolygon");
-   x_0 = (poly->unk_74 * vec.y) + (poly->unk_6C * vec.x);
-   y_0 = (poly->unk_78 * vec.y) + (poly->unk_70 * vec.x);
+   x_0 = poly->triangularCoorsMatrix[0][0] * vec.x + poly->triangularCoorsMatrix[1][0] * vec.y;
+   y_0 = poly->triangularCoorsMatrix[0][1] * vec.x + poly->triangularCoorsMatrix[1][1] * vec.y;
    if (x_0 < -0.0001) {
        return 0;
    }
@@ -315,7 +315,7 @@ s32 IsOnPolygon(Vec3f vec, Poly* poly) {
     vec.y -= poly->vertices[0].y;
     vec.z -= poly->vertices[0].z;
     
-    dotProduct = vec.z * poly->unkVectorStruct.normal.z + (vec.x * poly->unkVectorStruct.normal.x + vec.y * poly->unkVectorStruct.normal.y);
+    dotProduct = vec.z * poly->rotationMatrix.normal.z + (vec.x * poly->rotationMatrix.normal.x + vec.y * poly->rotationMatrix.normal.y);
 
     if (dotProduct < -1.0) {
         return 0;

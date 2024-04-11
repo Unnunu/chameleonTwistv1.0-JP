@@ -328,18 +328,11 @@ typedef struct Poly {
     /* 0x04 */ s32 unk_04;
     /* 0x08 */ Vec3f vertices[3]; // global coordinates
     /* 0x2C */ Rect3D boundBox;
-    /* 0x44 */ unkVecStruct unkVectorStruct;
+    /* 0x44 */ unkVecStruct rotationMatrix;
     /* 0x68 */ s32 disp_type;
-    /* 0x6C */ f32 unk_6C;
-    /* 0x70 */ f32 unk_70;
-    /* 0x74 */ f32 unk_74;
-    /* 0x78 */ f32 unk_78;
-    /* 0x7C */ f32 unk_7C;
-    /* 0x80 */ f32 unk_80;
-    /* 0x84 */ f32 unk_84;
-    /* 0x88 */ f32 unk_88;
-    /* 0x8C */ f32 unk_8C;
-    /* 0x90 */ f32 unk_90;
+    /* 0x6C */ f32 triangularCoorsMatrix[2][2]; // matrix to convert from local system to triangular system
+                                                // where 3 vertices have coordinates (0, 0), (1, 0) and (0, 1)
+    /* 0x7C */ Vec2f verticesLocal[3]; // local coordinates
     /* 0x94 */ char unk_94[12];
 } Poly; // sizeof 0xA0
 
