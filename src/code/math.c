@@ -66,7 +66,7 @@ f32 tanf(f32 x) {
  * @param x The value to calculate the arcsine of.
  * @return The interpolated and clamped arcsine of the input value.
  */
-f32 InterpolateAndClampArcSin(f32 x) {
+f32 asinf(f32 x) {
     f32* table;
     f32 sign;
     f32 abs_x;
@@ -120,8 +120,8 @@ f32 InterpolateAndClampArcSin(f32 x) {
  * 
  * @return: The angle s.t. sin(angle) = x.
  */
-f32 AngleFromArcSin(f32 x) {
-    return 90.0 - InterpolateAndClampArcSin(x);
+f32 acosf(f32 x) {
+    return 90.0 - asinf(x);
 }
 
 /**
@@ -131,7 +131,7 @@ f32 AngleFromArcSin(f32 x) {
  * 
  * @return The angle of the vector (probably in degrees)
  */
-f32 CalculateAngleOfVector(f32 x, f32 y) {
+f32 atan2f(f32 x, f32 y) {
     s32 pad[2];
     f32 angle;
     f32 frac;

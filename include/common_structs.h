@@ -828,18 +828,18 @@ typedef struct graphicStruct {
 /*0x1E880*/     Mtx unk1e880[74]; //may be used for "CTTask"s
 } graphicStruct; //sizeof 0x1FB00
 
-typedef struct Shadow{
-    u32 active;
-    Vec3f pos;
-    f32 rotY;
-    f32 rotX;
-    f32 scale;
-    f32 unk1c;
-    f32 rotYArrow;
-    u32 dlist;
-    u32 actorID;
-    Actor* actor;
-}Shadow;
+typedef struct Shadow {
+    /* 0x00 */ u32 active;
+    /* 0x04 */ Vec3f pos;
+    /* 0x10 */ f32 rotY;
+    /* 0x14 */ f32 rotX;
+    /* 0x18 */ f32 scale;
+    /* 0x1C */ f32 unk1c;
+    /* 0x20 */ f32 rotYArrow;
+    /* 0x24 */ Gfx* dlist;
+    /* 0x28 */ u32 actorID;
+    /* 0x2C */ Actor* actor;
+} Shadow; //sizeof 0x30
 
 typedef struct Door{
     s32 index;

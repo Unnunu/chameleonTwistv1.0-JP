@@ -1,4 +1,5 @@
 #include "common.h"
+#include "battle.h"
 
 /* rodata */
 extern char D_801103D0[];
@@ -30,6 +31,9 @@ extern s32 sNumPolygons;
 extern Poly* sPolygons[1024];
 extern s32 sNumListedPolygons;
 extern Collider* D_80240898[];
+extern u32 gShadowFlagsSet;
+extern Gfx D_2006988[];
+extern Gfx D_2006A48[];
 
 typedef struct TouchedPolygon {
     /* 0x00 */ Poly* poly;
@@ -41,14 +45,14 @@ typedef struct TouchedPolygon {
 
 /* Migrated BSS */
 //TODO: type this data correctly
-char gShadows[0xC00];
+Shadow gShadows[64];
 s32 gShadowCount;
 Vec3f D_80248518;
 TouchedPolygon sTouchedPolygons[32];
 s32 sNumTouchedPolygons;
 Vec3f D_802488B0;
 char D_802488BC_pad[0x4];
-char gHasShadow[0x100];
+s8 gHasShadow[256];
 char D_802489C0[0x08];
 Vec3f D_802489C8[8];
 char D_80248A28[0x08];
@@ -66,10 +70,15 @@ void func_800CBC08(Actor*);
 void func_800CC814(Actor*, Vec3f, s32);
 Vec3f* LocalToWorld(Vec3f* outVec, Vec3f vec, Poly* poly);
 Vec3f* WorldToLocal(Vec3f* outVec, Vec3f vec, Poly* poly);
+Vec3f* ProjectOnPolygon(Vec3f* outVec, Vec3f vec, Poly* poly);
 s32 IsOnPolygon(Vec3f vec, Poly* poly);
 s32 Vec3f_EqualsCopy(Vec3f vec1, Vec3f vec2);
 s32 IsInsidePolygon(Vec3f vec, Poly* poly);
 void Vec3f_Set(Vec3f* vec, f32 x, f32 y, f32 z);
+s32 CompareWrappedAngles(f32 angle1, f32 angle2);
+s32 func_800AF604(f32 arg0, f32 arg1, f32 arg2, f32 arg3);
+s32 func_800AF62C(f32 arg0, f32 arg1, f32 arg2, f32 arg3);
+s32 IsNotPickup(Actor* actor);
 
 void ClearPolygon(void) {
     sNumPolygons = 0;
@@ -942,27 +951,381 @@ Poly* func_800CB294(Vec3f point, f32 arg3) {
     return SearchPolyBelow(point, 10.0f, -d);
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/Shadows_Reset.s")
+void Shadows_Reset(void) {
+    s32 i;
 
+    gShadowCount = 0;
+    if (gShadowFlagsSet) {
+        return;
+    }
+    for (i = 0; i < 256; i++) {
+        gHasShadow[i] = TRUE;
+    }
+
+    gHasShadow[GREY_ANT_SPAWNER] = FALSE;
+    gHasShadow[BULLET_HELL_ANT_SPAWNER] = FALSE;
+    gHasShadow[RED_ANT_SPAWNER] = FALSE;
+    gHasShadow[ANT_TRIO_SPAWNER] = FALSE;
+    gHasShadow[MISSILE_SPAWNER] = FALSE;
+    gHasShadow[EXPLOSION] = FALSE;
+    gHasShadow[CANNON] = FALSE;
+    gHasShadow[CHOMPER] = FALSE;
+    gHasShadow[ARROW_SPAWNER] = FALSE;
+    gHasShadow[UNK_22] = FALSE;
+    gHasShadow[MIRROR] = FALSE;
+    gHasShadow[RNG_ROOM_SPAWNER] = FALSE;
+    gHasShadow[BARREL_JUMP_FIRE_SPAWNER] = FALSE;
+    gHasShadow[FIRE_SPAWNER] = FALSE;
+    gHasShadow[SPIDER_SPAWNER] = FALSE;
+    gHasShadow[GOLEM_ROOM_SPIDER_SPAWNER] = FALSE;
+    gHasShadow[LIZARD_KONG_BUTTERFLY_SPAWNER] = FALSE;
+    gHasShadow[POPCORN_BUCKET_SPAWNER] = FALSE;
+    gHasShadow[CHOCO_KID_SPAWNER] = FALSE;
+    gHasShadow[GREY_ANT_SPAWNER_WRAPPER] = FALSE;
+    gHasShadow[BATTLE_MODE_SAND_CRAB_SPAWNER] = FALSE;
+    gHasShadow[BATTLE_MODE_FIRE_SPAWNER] = FALSE;
+    gHasShadow[BATTLE_MODE_SAUCER_SPAWNER] = FALSE;
+    gHasShadow[UNK_59] = FALSE;
+    gHasShadow[FALLING_GREY_ANT_SPAWNER] = FALSE;
+    gHasShadow[POWER_UP_SPAWNER] = FALSE;
+    gHasShadow[UNK_FIRE_SPAWNER] = FALSE;
+    
+    gShadowFlagsSet = TRUE;
+}
+
+#ifdef NON_MATCHING
+void Shadows_Set(Vec3f point, Poly* groundPoly, f32* arg4, Actor* actor) {
+    Shadow* shadow;
+    f32 normalRotX;
+    f32 normalRotY;
+    f32 sp78;
+    f32 sp3C;
+    f32 normalXZ;
+    f32 sp6C;
+    Vec3f shadowPos;
+    Vec3f sp54;
+    Vec3f sp48;
+    f32 sp44;
+    f32 sp40;    
+    s32 sp38;
+    Vec3f* normal;
+    
+    sp6C = *arg4;
+
+    if (actor != NULL) {
+        if (!gHasShadow[actor->actorID]) {
+            return;
+        }
+        if (actor->actorID == BOULDER && actor->userVariables[0] == 0) {
+            return;
+        }
+        if (actor->actorID == SAND_CRAB && actor->userVariables[1] != 0) {
+            return;
+        }
+    }
+
+    if (gShadowCount >= 64) {
+        return;
+    }
+
+    shadow = &gShadows[gShadowCount];
+
+    if (groundPoly != NULL) {
+        normal = &groundPoly->rotationMatrix.normal;        
+        normalRotX = acosf(normal->y);
+        normalXZ = NORM_2(normal->z, normal->x);
+        if (normalXZ != 0.0) {
+            normalRotY = acosf(normal->z / normalXZ);
+        } else {
+            normalRotY = 0.0f;
+        }
+        if (normal->x < 0.0) {
+            normalRotY *= -1.0;
+        }
+        sp78 = 1.0 - (point.y - groundPoly->intersection.y) / (sp6C * 20.0);
+        if (sp78 > 1.0) {
+            sp78 = 1.0f;
+        }
+        if (sp78 < 0.0) {
+            return;
+        }
+
+        shadowPos.x = groundPoly->intersection.x;
+        shadowPos.y = groundPoly->intersection.y + 0.0;
+        shadowPos.z = groundPoly->intersection.z;
+
+        if (actor != NULL && actor->actorID == ARROWS) {
+            sp54.x = normal->x;
+            sp54.y = 0.0f;
+            sp54.z = normal->z;                        
+            if (sp54.x == 0.0 && sp54.y == 0.0 && sp54.z == 0.0) {
+                sp54.x = 0.0f;
+                sp54.z = 1.0f;
+            } else {
+                ProjectOnPolygon(&sp54, sp54, groundPoly);
+                Vec3f_Normalize(&sp54);
+            }
+
+            sp48.x = cosf(DEGREES_TO_RADIANS_PI(actor->unk_90));
+            sp48.z = -sinf(DEGREES_TO_RADIANS_PI(actor->unk_90));
+            sp48.y = -(sp48.x * normal->x + sp48.z * normal->z) / normal->y;
+            Vec3f_Normalize(&sp48);
+            CartesianToSpherical(sp54, &sp3C, &sp3C, &sp44);
+            CartesianToSpherical(sp48, &sp3C, &sp3C, &sp40);
+            sp38 = CompareWrappedAngles(sp44, sp40);
+            sp6C = acosf(sp54.x * sp48.x + sp54.y * sp48.y + sp54.z * sp48.z) * sp38;
+        }
+    } else {
+        shadowPos.x = point.x;
+        shadowPos.y = point.y + 0.0;
+        shadowPos.z = point.z;
+        normalRotY = 0.0f;
+        sp78 = 1.0f;
+        normalRotX = 0.0f;
+    }
+
+    shadow->active = TRUE;
+    shadow->pos.x = shadowPos.x;
+    shadow->pos.y = shadowPos.y;
+    shadow->pos.z = shadowPos.z;
+    shadow->rotY = normalRotY;
+    shadow->rotX = normalRotX;
+    shadow->unk1c = sp78;
+    shadow->rotYArrow = sp6C;
+    shadow->dlist = D_2006988;
+    shadow->actorID = actor == NULL ? ACTOR_NULL : actor->actorID;
+    shadow->actor = actor;    
+    if (gCurrentStage == STAGE_DESERT && gCurrentZone >= 30 && gCurrentZone <= 32) {
+        shadow->dlist = D_2006A48;
+    }
+    gShadowCount++;
+}
+#else
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/Shadows_Set.s")
+void Shadows_Set(Vec3f origin, Poly* ground, f32* arg4, Actor* actor);
+#endif
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CB99C.s")
+s32 func_800CB99C(f32 posX, f32 posY, f32 posZ, f32* arg3, Actor* actor) {
+    f32 newvar = *arg3;
+    Vec3f sp60;
+    Rect3D rect;
+    Poly* ground;
+    s32 ret;
+    f32 sp24;
+    Vec3f sp30;    
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CBB2C.s")
+    if (gShadowCount >= 64 || newvar <= 0.0) {
+        return FALSE;
+    }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CBB98.s")
+    sp60.x = posX;
+    sp60.y = posY;
+    sp60.z = posZ;
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CBC08.s")
+    sp30 = sp60;
+    rect.max = sp30;
+    rect.min = sp30;
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CBD24.s")
+    sp24 = newvar * 20.0;
+    rect.min.y -= sp24;
+    rect.max.y += 10.0;
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CBE74.s")
+    RegisterCollidersIntersectingRect(&rect, COLLIDER_DISP_TYPE_7 | COLLIDER_DISP_TYPE_70, 2);
+    ground = SearchPolyBelow(sp60, 10.0f, -sp24);
+    if (ground != NULL) {
+        Shadows_Set(sp60, ground, arg3, actor);
+        ret = TRUE;
+    } else {
+        ret = FALSE;
+    }
+    return ret;
+}
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CBF54.s")
+void func_800CBB2C(PlayerActor* player) {
+    if (func_800CB99C(player->pos.x, player->pos.y, player->pos.z, &player->hitboxSize, NULL)) {
+        player->yCounter = gShadows[gShadowCount - 1].pos.y;
+    } else {
+        player->yCounter = player->pos.y;
+    }
+}
+
+void func_800CBB98(Actor* actor) {
+    s32 unused;
+    Vec3f point;
+
+    point.x = actor->unknownPositionThings->unk_00 + actor->pos.x;
+    point.y = actor->pos.y;
+    point.z = actor->unknownPositionThings->unk_08 + actor->pos.z;
+    func_800CB294(point, actor->unknownPositionThings->unk_0C);
+}
+
+void func_800CBC08(Actor* actor) {
+    Poly* ground;
+    Vec3f point;    
+
+    if (actor->actorID == ACTOR_NULL || actor->actorState == 2 || actor->unknownPositionThings->unk_0C <= 0.0) {
+        return;
+    }
+
+    point.x = actor->unknownPositionThings->unk_00 + actor->pos.x;
+    point.y = actor->pos.y;
+    point.z = actor->unknownPositionThings->unk_08 + actor->pos.z;
+
+    if (!func_800AF62C(point.x, point.y, point.z, 6000.0f)) {
+        return;
+    }
+
+    ground = func_800CB294(point, actor->unknownPositionThings->unk_0C);
+    if (ground == NULL) {
+        return;
+    }
+
+    actor->unk_D4 = ground->intersection.x;
+    actor->unk_D8 = ground->intersection.y;
+    actor->unk_DC = ground->intersection.z;
+    Shadows_Set(point, ground, &actor->unknownPositionThings->unk_0C, actor);
+}
+
+void func_800CBD24(Actor* actor) {
+    Vec3f point;
+    Poly* ground;
+    s32 i;
+
+    if (actor->actorID == ACTOR_NULL || actor->actorID == ANT_QUEEN || actor->actorState == 2) {
+        return;
+    }
+
+    if (actor->tongueCollision <= 1) {
+        return;
+    }
+
+    for (i = 1; i < actor->tongueCollision; i++) {
+        actorSubArray* s0 = &actor->unknownPositionThings[i];
+        point.x = actor->pos.x + s0->unk_00;
+        point.y = actor->pos.y;
+        point.z = actor->pos.z + s0->unk_08;
+
+        if (!func_800AF604(point.x, point.y, point.z, 6000.0f)) {
+            continue;
+        }
+
+        ground = func_800CB294(point, s0->unk_0C);
+        if (ground == NULL) {
+            continue;
+        }
+
+        Shadows_Set(point, ground, &s0->unk_0C, actor);
+    }
+}
+
+void func_800CBE74(Actor* actor) {
+    Poly* ground;
+    Vec3f point;    
+
+    point.x = actor->unknownPositionThings->unk_00 + actor->pos.x;
+    point.y = actor->pos.y;
+    point.z = actor->unknownPositionThings->unk_08 + actor->pos.z;
+
+    if (!func_800AF62C(point.x, point.y, point.z, 6000.0f)) {
+        return;
+    }
+
+    ground = func_800CB294(point, actor->unknownPositionThings->unk_0C);
+    if (ground == NULL) {
+        return;
+    }
+
+    actor->unk_D4 = ground->intersection.x;
+    actor->unk_D8 = ground->intersection.y;
+    actor->unk_DC = ground->intersection.z;
+    Shadows_Set(point, ground, &actor->unknownPositionThings->unk_0C, actor);
+}
+
+void func_800CBF54(void) {
+    s32 i;
+    Actor* actor;
+
+    for (actor = gActors, i = 0; i < 64; actor++, i++) {
+        if (actor->actorID >= R_HEART) {
+            func_800CBE74(actor);
+        }
+    }
+}
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/Shadows_Draw_AntQueen.s")
+Gfx* Shadows_Draw_AntQueen(Shadow* arg0, Mtx*, Gfx* gfxPtr);
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/Shadows_Draw.s")
+//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/Shadows_Draw.s")
+Gfx* Shadows_Draw(graphicStruct* arg0, Gfx* gfxPos) {
+    Mtx* spAC = arg0->unk12880;
+    s32 actorID; // spA4
+    Shadow* shadow;
+    s32 i;
+    s32 s4;
+    
+
+    for (shadow = gShadows, i = 0 ; i < gShadowCount; shadow++, i++) {
+        if (!shadow->active) {
+            continue;
+        }
+
+        actorID = shadow->actor->actorID;
+
+        if (shadow->actor != NULL && gCurrentStage == STAGE_VS && IsNotPickup(shadow->actor) && Battle_Stage <= BATTLE_STAGE_GO) {
+            continue;
+        }
+        if (actorID == LIZARD_KONG && shadow->actor->userVariables[0] == 6 && shadow->actor->userVariables[2] <= 120) {
+            continue;
+        }
+        if (actorID == PILE_OF_BOOKS && (shadow->actor->userVariables[2] == 0 || shadow->actor->userVariables[2] == 1)) {
+            continue;
+        }
+
+        shadow->scale = shadow->rotYArrow / 70.0 * 1.2;
+        s4 = (1.0 - SQ(1.0 - shadow->unk1c)) * 200.0;
+
+        if (actorID == ANT_QUEEN) {
+            gfxPos = Shadows_Draw_AntQueen(shadow, spAC, gfxPos);
+            continue;
+        }
+
+        if (actorID == POGO) {
+            shadow->scale *= 1.5;
+        } else if (actorID == CUE_BALL || actorID == BILLIARDS_BALL) {
+            shadow->scale *= 0.8;
+        } else if (actorID == BOWLING_BALL) {
+            shadow->scale *= 0.8;
+        } else if (actorID == BOWLING_PINS) {
+            shadow->scale *= 0.8;
+        }
+
+        guTranslate(spAC, shadow->pos.x, shadow->pos.y, shadow->pos.z);
+        gSPMatrix(gfxPos++, OS_K0_TO_PHYSICAL(spAC++), G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        if (shadow->rotY != 0.0) {
+            guRotate(spAC, shadow->rotY, 0.0f, 1.0f, 0.0f);
+            gSPMatrix(gfxPos++, OS_K0_TO_PHYSICAL(spAC++), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        }
+        if (shadow->rotX != 0.0) {
+            guRotate(spAC, shadow->rotX, 1.0f, 0.0f, 0.0f);
+            gSPMatrix(gfxPos++, OS_K0_TO_PHYSICAL(spAC++), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        }
+        if (shadow->actorID == ARROWS) {
+            guRotate(spAC, shadow->rotYArrow, 0.0f, 1.0f, 0.0f);
+            gSPMatrix(gfxPos++, OS_K0_TO_PHYSICAL(spAC++), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            guScale(spAC, 0.32f, 1.0f, 1.92f);
+            gSPMatrix(gfxPos++, OS_K0_TO_PHYSICAL(spAC++), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        } else {
+            guScale(spAC, shadow->scale, 1.0f, shadow->scale);
+            gSPMatrix(gfxPos++, OS_K0_TO_PHYSICAL(spAC++), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+        }
+
+        gDPSetPrimColor(gfxPos++, 0, 0, 255, 255, 255, s4);
+        gSPDisplayList(gfxPos++, shadow->dlist);
+        gSPPopMatrix(gfxPos++, G_MTX_MODELVIEW);
+    }
+
+    return gfxPos;
+}
 
 /**
  * @brief Calculates the angle of the (x,z) vector from a 3dim vector, with respect to the positive z-axis.
@@ -971,7 +1334,7 @@ Poly* func_800CB294(Vec3f point, f32 arg3) {
  */
 void func_800CC7E0(Vec3f vec) {
     // In this instance the z component is flipped.
-    CalculateAngleOfVector(vec.x, -vec.z);
+    atan2f(vec.x, -vec.z);
 }
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CC814.s")

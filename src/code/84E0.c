@@ -94,7 +94,7 @@ void ClampPointToDisk(f32* a, f32* b, f32 radius) {
  * @brief Calculate the counterclockwise angle between two 2D points relative to the positive x-axis.
  *
  * This function calculates the counterclockwise angle in radians between two 2D points (x1, y1) and (x2, y2)
- * relative to the positive x-axis. The angle is computed by CalculateAngleOfVector,
+ * relative to the positive x-axis. The angle is computed by atan2f,
  * which uses a lookup table to determine the angle based on the provided 2D vector (x, y).
  *
  * @param x1 The x-coordinate of the first point.
@@ -105,7 +105,7 @@ void ClampPointToDisk(f32* a, f32* b, f32 radius) {
  * @return (f32) The counterclockwise angle between the two points in radians.
  */
 f32 CalcAngleBetween2DPoints(f32 x1, f32 y1, f32 x2, f32 y2) {
-    return CalculateAngleOfVector(x2 - x1, -(y2 - y1));
+    return atan2f(x2 - x1, -(y2 - y1));
 }
 
 /**
@@ -220,7 +220,7 @@ void func_8002D434(f32 *vecX, f32 *vecY, f32 diffX, f32 diffY, f32 addAngle) {
     
     // If magnitude is not 0, calculate new angle and adjust vector
     if (c != 0.0f) {
-        newAngle = CalculateAngleOfVector(a, -b) + addAngle;
+        newAngle = atan2f(a, -b) + addAngle;
         *vecX = cosf(DEGREES_TO_RADIANS_2PI(newAngle)) * c + diffX;
         *vecY = diffY + -(sinf(DEGREES_TO_RADIANS_2PI(newAngle)) * c);
     }
@@ -917,7 +917,7 @@ void func_800317A0(void) {
     
     for(i = gTongueOnePointer->poleSegmentAt; i < gTongueOnePointer->cameraSegmentAt; i++){
         if (((gTongueOnePointer->tongueXs[i] != 0.0f) || (gTongueOnePointer->tongueZs[i] != 0.0f)) && (gTongueOnePointer->length < gTongueOnePointer->tongueForwards[i])) {
-            gTongueOnePointer->controlAngle = CalculateAngleOfVector(gTongueOnePointer->tongueXs[i], gTongueOnePointer->tongueZs[i]);
+            gTongueOnePointer->controlAngle = atan2f(gTongueOnePointer->tongueXs[i], gTongueOnePointer->tongueZs[i]);
             gTongueOnePointer->length = gTongueOnePointer->tongueForwards[i];
         }
     }
@@ -1094,7 +1094,7 @@ void pickup_collide_func(s32 actorIndex) {
 
 void func_80035374(Unk_func_80035374* arg0) {
     if ((arg0->unk6 == 0) && (arg0->unk8 == 0)) {
-        AreAnglesWithin180Degrees(gCurrentActivePlayerPointer->yAngle, CalculateAngleOfVector((&D_80170968[gTongueOnePointer->poleID])->pos.x - gCurrentActivePlayerPointer->pos.x, -((&D_80170968[gTongueOnePointer->poleID])->pos.z - gCurrentActivePlayerPointer->pos.z)));
+        AreAnglesWithin180Degrees(gCurrentActivePlayerPointer->yAngle, atan2f((&D_80170968[gTongueOnePointer->poleID])->pos.x - gCurrentActivePlayerPointer->pos.x, -((&D_80170968[gTongueOnePointer->poleID])->pos.z - gCurrentActivePlayerPointer->pos.z)));
     } else {
         AreAnglesWithin180Degrees(arg0->unkC, CalcAngleBetween2DPoints(gCurrentActivePlayerPointer->pos.x, gCurrentActivePlayerPointer->pos.z, (&D_80170968[gTongueOnePointer->poleID])->pos.x, (&D_80170968[gTongueOnePointer->poleID])->pos.z));
     }
@@ -1128,7 +1128,7 @@ void func_80036D74(PlayerActor* arg0, Tongue* arg1) {
         arg0->playerHURTANIM = 0;
         arg0->playerHURTBY = 0;
         func_80031DB0(arg0, arg1, 0);
-        arg0->yAngle = CalculateAngleOfVector(-arg0->vel.x, arg0->vel.z);;
+        arg0->yAngle = atan2f(-arg0->vel.x, arg0->vel.z);;
         arg0->vel.x = -cosf(DEGREES_TO_RADIANS_2PI(arg0->yAngle)) * 32.0f;
         arg0->vel.z = sinf(DEGREES_TO_RADIANS_2PI(arg0->yAngle)) * 32.0f;
         func_8002F54C(48.0f, arg0, 1);
@@ -1662,7 +1662,7 @@ void func_8003FA38(Actor* arg0, f32 arg1, f32 arg2, f32 arg3) {
     temp_f8 = (s32) (NORM_2(temp_f0,temp_f2) / arg0->unk_94);
     arg0->userVariables[1] = temp_f8;
     arg0->unk_134[3] = (f32) ((arg2 - arg0->pos.y) / (f32) temp_f8);
-    arg0->unk_90 = CalculateAngleOfVector(temp_f0, -temp_f2);
+    arg0->unk_90 = atan2f(temp_f0, -temp_f2);
 }
 
 // POGO Function
@@ -1849,7 +1849,7 @@ void ActorTick_BilliardBall(Actor* arg0) {
     temp_f0_2 = NORM_2(arg0->vel.x,arg0->vel.z);
     arg0->unk_94 = temp_f0_2;
     arg0->unk_134[0] = ((180.0f * temp_f0_2) / ( arg0->unknownPositionThings[0].unk_0C * PI)) + arg0->unk_134[0];
-    arg0->unk_90 = CalculateAngleOfVector(arg0->vel.x, -arg0->vel.z);
+    arg0->unk_90 = atan2f(arg0->vel.x, -arg0->vel.z);
 }
 
 //(re)set bowling pins

@@ -202,6 +202,8 @@ void func_800D79E4(Poly* arg0, s32 arg1) {
  * 
  * @return (Vec3f) the projected vector.
  */
+#pragma GLOBAL_ASM("asm/nonmatchings/code/vector/ProjectOnPolygon.s")
+/*
 Vec3f* ProjectOnPolygon(Vec3f* vec, f32 perspX, f32 perspY, f32 perspZ, Poly* poly) {
     Vec3f vec_proj;
     f32 p_x;
@@ -220,6 +222,7 @@ Vec3f* ProjectOnPolygon(Vec3f* vec, f32 perspX, f32 perspY, f32 perspZ, Poly* po
     *vec = vec_proj;
     return vec;
 }
+*/
 
 /** 
  * @brief Converts a 3D vector from world space to local space. 

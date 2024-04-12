@@ -62,7 +62,7 @@ void CartesianToSpherical(Vec3f inputVec, f32* radius, f32* theta, f32* phi) {
         *phi = 0.0f;
         return;
     } else {
-        *theta = AngleFromArcSin(inputVec.y / *radius);
+        *theta = acosf(inputVec.y / *radius);
         sqrtResult = NORM_2(inputVec.z,inputVec.x);
         
         if (sqrtResult == 0.0) {
@@ -70,7 +70,7 @@ void CartesianToSpherical(Vec3f inputVec, f32* radius, f32* theta, f32* phi) {
             return;
         }
         
-        *phi = AngleFromArcSin(inputVec.z / sqrtResult);
+        *phi = acosf(inputVec.z / sqrtResult);
         
         if (inputVec.x < 0.0) {
             *phi = *phi * -1.0;
