@@ -822,7 +822,7 @@ typedef struct graphicStruct {
 /*0xf880*/      Mtx actorTranslate[64];
 /*0x10880*/     Mtx actorRotate[64];
 /*0x11880*/     Mtx actorScale[64];
-/*0x12880*/     s8 unk12880[0x4000]; //mtx's for shadows?
+/*0x12880*/     Mtx shadow[256];
 /*0x16880*/     Mtx colliderTransforms[128][3]; // may be wrong.
 /*0x1C880*/     s8 unk1c880[0x2000];
 /*0x1E880*/     Mtx unk1e880[74]; //may be used for "CTTask"s
@@ -834,8 +834,8 @@ typedef struct Shadow {
     /* 0x10 */ f32 rotY;
     /* 0x14 */ f32 rotX;
     /* 0x18 */ f32 scale;
-    /* 0x1C */ f32 unk1c;
-    /* 0x20 */ f32 rotYArrow;
+    /* 0x1C */ f32 relDist;
+    /* 0x20 */ f32 baseScale;
     /* 0x24 */ Gfx* dlist;
     /* 0x28 */ u32 actorID;
     /* 0x2C */ Actor* actor;
