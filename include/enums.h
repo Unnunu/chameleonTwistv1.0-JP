@@ -548,6 +548,7 @@ enum RotationAxis {
 enum ColliderTypes {
     COLLIDER_TYPE_7 = 7,
     COLLIDER_TYPE_8 = 8,
+    COLLIDER_TYPE_12 = 12,
     COLLIDER_TYPE_25 = 25,
     COLLIDER_TYPE_27 = 27,
     COLLIDER_TYPE_29 = 29,

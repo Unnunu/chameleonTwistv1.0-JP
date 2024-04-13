@@ -79,6 +79,7 @@ s32 CompareWrappedAngles(f32 angle1, f32 angle2);
 s32 func_800AF604(f32 arg0, f32 arg1, f32 arg2, f32 arg3);
 s32 func_800AF62C(f32 arg0, f32 arg1, f32 arg2, f32 arg3);
 s32 IsNotPickup(Actor* actor);
+void func_800B80A8(Poly*);
 
 void ClearPolygon(void) {
     sNumPolygons = 0;
@@ -1368,25 +1369,153 @@ Gfx* Shadows_Draw(graphicStruct* arg0, Gfx* gfxPos) {
  * 
  * @param vec: The 3dim vector to calculate the angle of. 
  */
-void func_800CC7E0(Vec3f vec) {
+f32 func_800CC7E0(Vec3f vec) {
     // In this instance the z component is flipped.
-    atan2f(vec.x, -vec.z);
+    return atan2f(vec.x, -vec.z);
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CC814.s")
+void func_800CC814(Actor* actor, Vec3f vec, s32 arg4) {
+    Vec3f sp;
+    s32 v0 = FALSE;
+    vec.x -= actor->unknownPositionThings[0].unk_00;
+    vec.z -= actor->unknownPositionThings[0].unk_08;
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcThrownEnemyNext.s")
+    if (arg4 == 1) {
+        if (vec.x < actor->unk_F4 + actor->tScale) {
+            sp.x = 1.0f;
+            v0 = TRUE;
+        } else if (vec.x > actor->unk_F8 - actor->tScale) {
+            sp.x = -1.0f;
+            v0 = TRUE;
+        } else {
+            actor->pos.x = vec.x;
+            sp.x = 0.0f;
+        }
 
-void func_800CCDCC(Actor* arg0) {
+        if (vec.y < actor->unk_FC) {
+            sp.y = 1.0f;
+            v0 = TRUE;
+        } else if (vec.y > actor->unk_100) {
+            sp.y = -1.0f;
+            v0 = TRUE;
+        } else {
+            actor->pos.y = vec.y;
+            sp.y = 0.0f;
+        }
+
+        if (vec.z < actor->unk_104 + actor->tScale) {
+            sp.z = 1.0f;
+            v0 = TRUE;
+        } else if (vec.z > actor->unk_108 - actor->tScale) {
+            sp.z = -1.0f;
+            v0 = TRUE;
+        } else {
+            actor->pos.z = vec.z;
+            sp.z = 0.0f;
+        }
+
+        if (v0) {
+            actor->unk_9C = 1;
+            actor->unk_B0 = func_800CC7E0(sp);
+        }
+    } else {
+        actor->pos.x = vec.x;
+        actor->pos.y = vec.y;
+        actor->pos.z = vec.z;
+    }
+
+    if (actor->unk_98 != 0) {
+        actor->unk_E0 = -1;
+        actor->unk_E4 = -1;
+    }
+}
+
+
+//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcThrownEnemyNext.s")
+s32 CalcThrownEnemyNext(Actor* actor) {
+    Vec3f currentPos;
+    Vec3f sp90;
+    Vec3f nextPos;
+    Vec3f vel;
+    Vec3f sp38;
+    s32 ret;
+    f32 speed;
+    f32 q;
+    Rect3D bbox;
+    Poly* poly;
+
+    currentPos.x = actor->unknownPositionThings[0].unk_00 + actor->pos.x;
+    currentPos.y = actor->pos.y + actor->tYPos * 0.5;
+    currentPos.z = actor->unknownPositionThings[0].unk_08 + actor->pos.z;
+
+    vel.x = actor->vel.x;
+    vel.y = actor->vel.y;
+    vel.z = actor->vel.z;
+    speed = NORM_3(vel.x, vel.y, vel.z);
+    if (speed == 0.0) {
+        DummiedPrintf3("CalcThrownEnemyNext(): Thrown, but velocity is zero\n");
+        currentPos.y -= actor->tYPos * 0.5;
+        func_800CC814(actor, currentPos, 0);
+        func_800CBC08(actor);
+        return FALSE;
+    }
+
+    q = actor->tScale / speed;
+
+    nextPos.x = currentPos.x + vel.x;
+    nextPos.y = currentPos.y + vel.y;
+    nextPos.z = currentPos.z + vel.z;
+
+    sp38.x = vel.x * q;
+    sp38.y = vel.y * q;
+    sp38.z = vel.z * q;
+
+    sp90.x = nextPos.x + sp38.x;
+    sp90.y = nextPos.y + sp38.y;
+    sp90.z = nextPos.z + sp38.z;
+
+    CalculateBoundingRectFromVectors(currentPos, sp90, &bbox);
+    RegisterCollidersIntersectingRect(&bbox, 0x77, 2);
+
+    ret = FALSE;
+    poly = SearchPolygonBetween(currentPos, sp90, 0x77, TRUE, FALSE);
+    if (poly != NULL) {
+        ret = TRUE;
+        nextPos.x = poly->intersection.x - sp38.x;
+        nextPos.y = poly->intersection.y - sp38.y;
+        nextPos.z = poly->intersection.z - sp38.z;
+        if (D_80236980[poly->unk_04].typeMaybe == COLLIDER_TYPE_12) {
+            func_800B80A8(poly);
+        }
+    }
+
+    nextPos.y -= actor->tYPos * 0.5;
+    func_800CC814(actor, nextPos, 0);
+
+    nextPos.x = actor->unknownPositionThings[0].unk_00 + actor->pos.x;
+    nextPos.y = actor->pos.y;
+    nextPos.z = actor->unknownPositionThings[0].unk_08 + actor->pos.z;
+
+    poly = func_800CB294(nextPos, actor->unknownPositionThings->unk_0C);
+    if (poly != NULL) {
+        Shadows_Set(nextPos, poly, &actor->unknownPositionThings->unk_0C, actor);
+    }
+    if (actor->tongueCollision >= 2) {
+        func_800CBD24(actor);
+    }
+    return ret;
+}
+
+void func_800CCDCC(Actor* actor) {
     Vec3f sp24;
 
-    sp24.x = arg0->unknownPositionThings[0].unk_00 + arg0->pos.x;
-    sp24.y = arg0->pos.y;
-    sp24.z = arg0->unknownPositionThings[0].unk_08 + arg0->pos.z;
-    arg0->unk_98 = 0;
-    arg0->unk_9C = 0;
-    func_800CC814(arg0, sp24, 1);
-    func_800CBC08(arg0);
+    sp24.x = actor->unknownPositionThings[0].unk_00 + actor->pos.x;
+    sp24.y = actor->pos.y;
+    sp24.z = actor->unknownPositionThings[0].unk_08 + actor->pos.z;
+    actor->unk_98 = 0;
+    actor->unk_9C = 0;
+    func_800CC814(actor, sp24, 1);
+    func_800CBC08(actor);
 }
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CCE4C.s")
@@ -1567,6 +1696,7 @@ void func_800D4550(s32 arg0, s32 arg1, Poly* arg2, Vec3f* arg3, Vec3f* arg4) {
     arg4->y = temp_v0->unk9C + (temp_v0->unkD0 * arg2->rotationMatrix.vec1.x);
     arg4->z = temp_v0->unkA0;
 }
+
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800D45D8.s")
 

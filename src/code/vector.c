@@ -195,34 +195,25 @@ void func_800D79E4(Poly* arg0, s32 arg1) {
  * @brief Projects a given 3D vector onto a polygon in 3D space, returning the projected vector.
  * 
  * @param[in,out]  vec:    the vector to project.
- * @param          perspX: the X coordinate of the perspective point.
- * @param          perspY: the Y coordinate of the perspective point.
- * @param          perspZ: the Z coordinate of the perspective point.
+ * @param          persp:  the perspective point.
  * @param          poly:   the polygon to project onto.
  * 
  * @return (Vec3f) the projected vector.
  */
-#pragma GLOBAL_ASM("asm/nonmatchings/code/vector/ProjectOnPolygon.s")
-/*
-Vec3f* ProjectOnPolygon(Vec3f* vec, f32 perspX, f32 perspY, f32 perspZ, Poly* poly) {
+Vec3f* ProjectOnPolygon(Vec3f* vec, Vec3f persp, Poly* poly) {
     Vec3f vec_proj;
-    f32 p_x;
-    f32 dotProduct;
-    f32 dist;
-    f32 p_x2;
+    f32 localX;
+    f32 localY;
 
     OnlyCheckPolyInfoLevel(poly, 2, "ProjectOnPolygon");
-    p_x = poly->rotationMatrix.vec1.x;
-    p_x2 = poly->rotationMatrix.vec2.x;
-    dotProduct = (poly->rotationMatrix.vec1.z * perspZ) + ((perspX * p_x) + (perspY * poly->rotationMatrix.vec1.y));
-    dist = (poly->rotationMatrix.vec2.z * perspZ) + ((perspX * p_x2) + (perspY * poly->rotationMatrix.vec2.y));
-    vec_proj.x = (p_x2 * dist) + (dotProduct * p_x);
-    vec_proj.y = (poly->rotationMatrix.vec2.y * dist) + (dotProduct * poly->rotationMatrix.vec1.y);
-    vec_proj.z = (poly->rotationMatrix.vec2.z * dist) + (dotProduct * poly->rotationMatrix.vec1.z);
+    localX = (poly->rotationMatrix.vec1.z * persp.z) + ((persp.x * poly->rotationMatrix.vec1.x) + (persp.y * poly->rotationMatrix.vec1.y));
+    localY = (poly->rotationMatrix.vec2.z * persp.z) + ((persp.x * poly->rotationMatrix.vec2.x) + (persp.y * poly->rotationMatrix.vec2.y));
+    vec_proj.x = (poly->rotationMatrix.vec2.x * localY) + (localX * poly->rotationMatrix.vec1.x);
+    vec_proj.y = (poly->rotationMatrix.vec2.y * localY) + (localX * poly->rotationMatrix.vec1.y);
+    vec_proj.z = (poly->rotationMatrix.vec2.z * localY) + (localX * poly->rotationMatrix.vec1.z);
     *vec = vec_proj;
     return vec;
 }
-*/
 
 /** 
  * @brief Converts a 3D vector from world space to local space. 
