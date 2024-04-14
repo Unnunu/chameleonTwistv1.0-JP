@@ -4,11 +4,6 @@
 #include "common.h"
 
 /* Structs */
-typedef struct temp_func_800B2AB4 {
-    char unk0[0x4];
-    s32 unk4;
-} temp_func_800B2AB4;
-
 typedef struct unk801B3178 {
     char unk_00[0x18];
     s32 unk_18;

@@ -80,6 +80,7 @@ s32 func_800AF604(f32 arg0, f32 arg1, f32 arg2, f32 arg3);
 s32 func_800AF62C(f32 arg0, f32 arg1, f32 arg2, f32 arg3);
 s32 IsNotPickup(Actor* actor);
 void func_800B80A8(Poly*);
+Vec3f* func_800B2AB4(Vec3f* arg0, Vec3f arg1, Poly* arg4);
 
 void ClearPolygon(void) {
     sNumPolygons = 0;
@@ -1662,7 +1663,210 @@ void func_800CCE4C(Actor* actor) {
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcWalkingEnemyNext.s")
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcJumpingEnemyNext.s")
+//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcJumpingEnemyNext.s")
+void CalcJumpingEnemyNext(Actor* actor) {
+    Vec3f sp154;
+    Vec3f sp148;
+    Vec3f sp13C;
+    Vec3f sp130;
+    Vec3f sp124;
+    Collider* sp120;
+    Poly* sp11C;
+    Poly* sp118;
+    Poly* poly;
+    Rect3D spFC;
+    Vec3f spF0;
+    s32 spEC;
+    s32 spE8;
+    f32 q;
+    Rect3D spCC;
+    Vec3f spC0;
+    Vec3f spB4;
+    Vec3f spA8;
+    Vec3f sp9C;
+    Vec3f sp90;
+    Vec3f sp84;
+    Rect3D sp6C;
+    Vec3f sp60;
+    f32 speed;
+
+    sp154.x = actor->unknownPositionThings[0].unk_00 + actor->pos.x;
+    sp154.y = actor->pos.y;
+    sp154.z = actor->unknownPositionThings[0].unk_08 + actor->pos.z;
+
+    sp130.x = actor->vel.x;
+    sp130.y = actor->vel.y;
+    sp130.z = actor->vel.z;
+
+    actor->unk_9C = 0;
+    spEC = FALSE;
+    spE8 = FALSE;
+
+    if (actor->unk_98 == 0 && actor->unk_E0 >= 0 && actor->unk_E4 >= 0) {
+        sp120 = &D_80236980[actor->unk_E0];
+        RegisterFirstCollider(sp120);
+        sp11C = &sp120->polygons[actor->unk_E4];
+        func_800D79E4(sp11C, 2);
+        if (sp130.z * sp11C->rotationMatrix.normal.z + (sp130.x * sp11C->rotationMatrix.normal.x + sp130.y * sp11C->rotationMatrix.normal.y) > 0.0) {
+            spE8 = TRUE;
+        }
+    }
+
+    sp11C = NULL;
+
+    if (actor->unk_98 == 0 && !spE8) {
+        if (actor->unk_E0 < 0) {
+            spC0.x = sp154.x;
+            spC0.y = sp154.y - actor->tYPos * 0.5;
+            spC0.z = sp154.z;
+            spB4.x = sp154.x;
+            spB4.y = sp154.y + actor->tYPos * 0.5;
+            spB4.z = sp154.z;            
+            CalculateBoundingRectFromVectors(spC0, spB4, &spCC);
+            RegisterCollidersIntersectingRect(&spCC, 0x77, 2);
+            sp11C = SearchPolyBelow(sp154, actor->tYPos * 0.5, -actor->tYPos * 0.5);
+            if (sp11C == NULL) {
+                actor->unk_98 = 1;
+                actor->unk_E0 = -1;
+                actor->unk_E4 = -1;
+            } else {
+                actor->unk_E0 = sp11C->unk_04;
+                actor->unk_E4 = (sp11C - D_80236980[sp11C->unk_04].polygons);
+                sp154 = sp11C->intersection;
+            }
+        } else {
+            sp120 = &D_80236980[actor->unk_E0];
+            RegisterFirstCollider(sp120);
+            sp11C = &sp120->polygons[actor->unk_E4];
+        }
+
+        if (sp11C != NULL) {
+            func_800D79E4(sp11C, 2);
+            if (sp11C->rotationMatrix.normal.y <= 0.0) {
+                DummiedPrintf3("CalcJumpingEnemyNext(): Not On Standable Polygon\n");
+                DummiedPrintf3("Please Check Map Data\n");
+                return;
+            }
+            ProjectOnPolygon(&sp130, sp130, sp11C);
+        }
+    }
+
+    if (sp11C != NULL) {
+        func_800B2AB4(&spA8, sp154, sp11C);
+        sp130.x += spA8.x;
+        sp130.y += spA8.y;
+        sp130.z += spA8.z;
+    }
+
+    speed = NORM_3(sp130.x, sp130.y, sp130.z);
+    if (speed == 0.0) {
+        sp118 = func_800CB294(sp154, actor->unknownPositionThings->unk_0C);
+        if (sp118 == NULL) {
+            actor->unk_98 = TRUE;
+            actor->unk_9C = FALSE;
+            func_800CC814(actor, sp154, TRUE);
+            func_800CBC08(actor);
+        } else {
+            spF0 = sp118->rotationMatrix.normal;
+            actor->unk_98 = FALSE;
+            actor->unk_9C = TRUE;
+            actor->unk_B4 = spF0.x;
+            actor->unk_B8 = spF0.y;
+            actor->unk_BC = spF0.z;
+            actor->unk_B0 = func_800CC7E0(spF0);
+            func_800CC814(actor, sp154, TRUE);
+            Shadows_Set(sp154, sp118, &actor->unknownPositionThings->unk_0C, actor);
+        }
+        return;
+    }
+
+    switch (actor->unk_A0.unk_08) {
+        case 0:
+            sp13C.x = sp154.x + sp130.x;
+            sp13C.y = sp154.y + sp130.y;
+            sp13C.z = sp154.z + sp130.z;
+            break;
+        case 1:
+        case 2:
+            q = actor->tScale / speed;
+
+            sp124.x = sp130.x * q;
+            sp124.y = sp130.y * q;
+            sp124.z = sp130.z * q;
+
+            sp154.y += actor->tYPos * 0.5;
+
+            sp13C.x = sp154.x + sp130.x;
+            sp13C.y = sp154.y + sp130.y;
+            sp13C.z = sp154.z + sp130.z;
+
+            sp148.x = sp13C.x + sp124.x;
+            sp148.y = sp13C.y + sp124.y; sp148.z = sp13C.z + sp124.z;            
+
+            CalculateBoundingRectFromVectors(sp154, sp148, &spFC);
+            spFC.min.y -= actor->tYPos;
+            RegisterCollidersIntersectingRect(&spFC, 0x77, 4);
+            spEC = TRUE;
+            poly = SearchPolygonBetween(sp154, sp148, 0x77, TRUE, TRUE);
+            if (poly != NULL) {
+                sp9C = poly->rotationMatrix.normal;
+
+                sp13C.x = poly->intersection.x - sp124.x;
+                sp13C.y = poly->intersection.y - sp124.y;
+                sp13C.z = poly->intersection.z - sp124.z;
+
+                GetClosestAvailablePoint(&sp13C, sp13C, actor->tScale, 0x77);
+                if (D_802488B0.x != 0.0 || D_802488B0.y != 0.0 || D_802488B0.z != 0.0) {
+                    sp9C = D_802488B0;
+                    Vec3f_Normalize(&sp9C);
+                }
+
+                actor->unk_9C = TRUE;
+                actor->unk_B4 = sp9C.x;
+                actor->unk_B8 = sp9C.y;
+                actor->unk_BC = sp9C.z;
+                actor->unk_B0 = func_800CC7E0(sp9C);
+            }
+            sp154.y -= actor->tYPos * 0.5;
+            sp13C.y -= actor->tYPos * 0.5;
+            break;
+    }
+
+    if (!spEC) {
+        sp90 = sp84 = sp13C;
+        sp90.y += actor->tYPos * 0.5;
+        sp84.y -= actor->tYPos * 0.5;
+        CalculateBoundingRectFromVectors(sp90, sp84, &sp6C);
+        RegisterCollidersIntersectingRect(&sp6C, 0x77, 2);
+    }
+
+    sp11C = SearchPolyBelow(sp13C, actor->tYPos * 0.1, -actor->tYPos * 0.5);
+    if (sp11C == NULL || spE8) {
+        actor->unk_98 = TRUE;
+        actor->unk_E0 = -1;
+        actor->unk_E4 = -1;
+        func_800CBC08(actor);
+    } else {
+        actor->unk_98 = FALSE;
+        sp13C = sp11C->intersection;
+        actor->unk_D4 = sp13C.x;
+        actor->unk_D8 = sp13C.y;
+        actor->unk_DC = sp13C.z;
+        actor->unk_E0 = sp11C->unk_04;
+        sp120 = &D_80236980[sp11C->unk_04];
+        actor->unk_E4 = sp11C - sp120->polygons;
+
+        sp60 = sp11C->rotationMatrix.normal;
+        actor->unk_9C = TRUE;
+        actor->unk_B4 = sp60.x;
+        actor->unk_B8 = sp60.y;
+        actor->unk_BC = sp60.z;
+        actor->unk_B0 = func_800CC7E0(sp60);
+        Shadows_Set(sp13C, sp11C, &actor->unknownPositionThings->unk_0C, actor);
+    }
+
+    func_800CC814(actor, sp13C, TRUE);
+}
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CEB10.s")
 

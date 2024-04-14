@@ -313,8 +313,8 @@ s32 func_800B2510(void) {
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/8ADD0/func_800B255C.s")
 
-Vec3f* func_800B2AB4(Vec3f* arg0, Vec3f arg1, temp_func_800B2AB4* arg4) {
-    Collider* temp = &D_80236980[arg4->unk4];
+Vec3f* func_800B2AB4(Vec3f* arg0, Vec3f arg1, Poly* arg4) {
+    Collider* temp = &D_80236980[arg4->unk_04];
     Vec3f sp20;
 
     func_800B255C(&sp20, arg1, temp);
