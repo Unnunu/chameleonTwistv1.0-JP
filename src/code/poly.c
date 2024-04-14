@@ -1518,7 +1518,147 @@ void func_800CCDCC(Actor* actor) {
     func_800CBC08(actor);
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CCE4C.s")
+void func_800CCE4C(Actor* actor) {
+    Vec3f currentPos;
+    Vec3f sp100;
+    Vec3f nextPos;
+    Vec3f vel;
+    Poly* poly;
+    f32 sp4Cx, sp4Cy, sp4Cz;
+    s32 spD4;    
+    Rect3D rect;
+    Poly* ground;
+    f32 speed;
+    f32 q;
+    Vec3f spA4;    
+    Vec3f sp98;
+    Vec3f sp8C;
+    Rect3D sp74;
+    Vec3f sp68;
+
+    currentPos.x = actor->unknownPositionThings[0].unk_00 + actor->pos.x;
+    currentPos.y = actor->pos.y;
+    currentPos.z = actor->unknownPositionThings[0].unk_08 + actor->pos.z;
+
+    vel.x = actor->vel.x;
+    vel.y = actor->vel.y;
+    vel.z = actor->vel.z;
+
+    actor->unk_9C = 0;
+    spD4 = FALSE;
+
+    speed = NORM_3(vel.x, vel.y, vel.z);
+    if (speed == 0.0) {
+        actor->unk_9C = 0;
+        func_800CC814(actor, currentPos, 1);
+        if (actor->unk_98 == 0) {
+            Shadows_Set(currentPos, NULL, &actor->unknownPositionThings->unk_0C, actor);
+        } else {
+            func_800CBC08(actor);
+        }
+        return;
+    }
+
+    switch (actor->unk_A0.unk_08) {
+        case 0:
+            nextPos.x = currentPos.x + vel.x;
+            nextPos.y = currentPos.y + vel.y;
+            nextPos.z = currentPos.z + vel.z;
+            break;
+        case 1:
+        case 2:
+            q = actor->tScale / speed;
+
+            currentPos.y += actor->tYPos * 0.5;
+
+            nextPos.x = currentPos.x + vel.x;
+            nextPos.y = currentPos.y + vel.y;
+            nextPos.z = currentPos.z + vel.z;
+
+            sp4Cx = vel.x * q;
+            sp4Cy = vel.y * q;
+            sp4Cz = vel.z * q;
+
+            sp100.x = nextPos.x + sp4Cx;
+            sp100.y = nextPos.y + sp4Cy;
+            sp100.z = nextPos.z + sp4Cz;
+
+            CalculateBoundingRectFromVectors(currentPos, sp100, &rect);
+            rect.min.y -= actor->tYPos;
+            RegisterCollidersIntersectingRect(&rect, 0x77, 4);
+            spD4 = TRUE;
+            poly = SearchPolygonBetween(currentPos, sp100, 0x77, TRUE, TRUE);
+            if (poly != NULL) {
+                spA4 = poly->rotationMatrix.normal;
+
+                nextPos.x = poly->intersection.x - sp4Cx;
+                nextPos.y = poly->intersection.y - sp4Cy;
+                nextPos.z = poly->intersection.z - sp4Cz;
+
+                GetClosestAvailablePoint(&nextPos, nextPos, actor->tScale, 0x77);
+                if (D_802488B0.x != 0.0 || D_802488B0.y != 0.0 || D_802488B0.z != 0.0) {
+                    spA4 = D_802488B0;
+                    Vec3f_Normalize(&spA4);
+                }
+
+                actor->unk_9C = TRUE;
+                actor->unk_B4 = spA4.x;
+                actor->unk_B8 = spA4.y;
+                actor->unk_BC = spA4.z;
+                actor->unk_B0 = func_800CC7E0(spA4);
+            }
+            currentPos.y -= actor->tYPos * 0.5;
+            nextPos.y -= actor->tYPos * 0.5;
+            break;
+    }
+
+    ground = NULL;
+    if (actor->unk_98 != 0 || actor->unk_A0.unk_0C != 0) {
+        if (!spD4) {
+            sp98 = sp8C = nextPos;
+
+            sp98.y += actor->tYPos * 0.5;
+            sp8C.y -= actor->tYPos * 0.5;
+
+            CalculateBoundingRectFromVectors(sp98, sp8C, &sp74);
+            RegisterCollidersIntersectingRect(&sp74, 0x77, 2);
+        }
+
+        ground = SearchPolyBelow(nextPos, actor->tYPos * 0.1, -actor->tYPos * 0.5);
+        if (ground == NULL) {
+            if (actor->unk_A0.unk_0C == 2) {
+                nextPos = currentPos;
+                actor->unk_98 = 0;
+                actor->unk_9C = 1;
+                sp68.x = -vel.x;
+                sp68.y = -vel.y;
+                sp68.z = -vel.z;
+                actor->unk_B0 = func_800CC7E0(sp68);
+            } else {
+                actor->unk_98 = 1;
+                actor->unk_9C = 0;
+                ground = func_800CB294(nextPos, actor->unknownPositionThings->unk_0C);
+            }
+        } else {
+            actor->unk_98 = 0;
+            nextPos = ground->intersection;
+        }
+    } else {
+        actor->unk_98 = 0;
+    }
+
+    func_800CC814(actor, nextPos, 1);
+
+    nextPos.x = actor->unknownPositionThings[0].unk_00 + actor->pos.x;
+    nextPos.y = actor->pos.y;
+    nextPos.z = actor->unknownPositionThings[0].unk_08 + actor->pos.z;
+
+    if (ground != NULL) {
+        Shadows_Set(nextPos, ground, &actor->unknownPositionThings->unk_0C, actor);
+    } else {
+        Shadows_Set(nextPos, NULL, &actor->unknownPositionThings->unk_0C, actor);
+    }
+}
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcWalkingEnemyNext.s")
 
@@ -1526,30 +1666,30 @@ void func_800CCDCC(Actor* actor) {
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CEB10.s")
 
-void CalcEnemyNextPosition(Actor* arg0) {
-   switch (arg0->unk_A0.unk_04) {
+void CalcEnemyNextPosition(Actor* actor) {
+   switch (actor->unk_A0.unk_04) {
    case 0:
-       func_800CCDCC(arg0);
+       func_800CCDCC(actor);
        break;
    case 1:
-       func_800CCE4C(arg0);
+       func_800CCE4C(actor);
        break;
    case 2:
-       CalcWalkingEnemyNext(arg0);
+       CalcWalkingEnemyNext(actor);
        break;
    case 3:
-       CalcJumpingEnemyNext(arg0);
+       CalcJumpingEnemyNext(actor);
        break;
    case 4:
-       func_800CEB10(arg0);
+       func_800CEB10(actor);
        break;
    default:
        DummiedPrintf3("CalcEnemyNextPosition(): Unknown ATR_IDOU_XXXX\n");
        // double 810000
        break;
    }
-   if (arg0->tongueCollision >= 2) {
-       func_800CBD24(arg0);
+   if (actor->tongueCollision >= 2) {
+       func_800CBD24(actor);
    }
 }
 
