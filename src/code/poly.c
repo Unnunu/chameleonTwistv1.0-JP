@@ -1431,8 +1431,6 @@ void func_800CC814(Actor* actor, Vec3f vec, s32 arg4) {
     }
 }
 
-
-//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcThrownEnemyNext.s")
 s32 CalcThrownEnemyNext(Actor* actor) {
     Vec3f currentPos;
     Vec3f sp90;
@@ -1661,9 +1659,174 @@ void func_800CCE4C(Actor* actor) {
     }
 }
 
-#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcWalkingEnemyNext.s")
+#ifdef NON_MATCHING
+void CalcWalkingEnemyNext(Actor* actor) {
+    Vec3f currentPos;
+    Vec3f spE0;
+    Vec3f spD4;
+    Vec3f vel;
+    Vec3f spBC;
+    Collider* spB8;
+    Poly* spB4;
+    Poly* poly;
+    f32 speed;
+    Rect3D sp94;
+    f32 q;
+    Rect3D sp78;
+    Vec3f sp6C;
+    Vec3f sp60;
+    Vec3f sp54;
+    s32 nv;
 
-//#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcJumpingEnemyNext.s")
+    currentPos.x = actor->unknownPositionThings[0].unk_00 + actor->pos.x;
+    currentPos.y = actor->pos.y;
+    currentPos.z = actor->unknownPositionThings[0].unk_08 + actor->pos.z;
+
+    vel.x = actor->vel.x;
+    vel.y = actor->vel.y;
+    vel.z = actor->vel.z;
+
+    actor->unk_9C = FALSE;
+
+    if (actor->unk_A0.unk_0C != 1 && actor->unk_98) {
+        poly = func_800CB294(currentPos, actor->unknownPositionThings->unk_0C);
+        if (poly == NULL) {
+            DummiedPrintf3("CalcWalkingEnemyNext(): Too Far From Ground\n");
+            DummiedPrintf3("%7.1f %7.1f %7.1f\n", currentPos.x, currentPos.y, currentPos.z);
+            DummiedPrintf3("Please Check Map Data\n");
+            return;
+        }
+        
+        currentPos = poly->intersection;
+        nv = poly->unk_04;
+        actor->unk_E0 = nv;
+        spB8 = &D_80236980[actor->unk_E0];
+        actor->unk_E4 = poly - spB8->polygons;
+        actor->unk_98 = FALSE;
+        
+    }
+
+    spB4 = NULL;
+
+    if (actor->unk_98 == 0) {
+        vel.y = 0.0f;
+        if ((actor->unk_E0 < 0) != FALSE) {
+            sp6C.x = currentPos.x;
+            sp6C.y = currentPos.y - actor->tYPos * 0.5;
+            sp6C.z = currentPos.z;
+            sp60.x = currentPos.x;
+            sp60.y = currentPos.y + actor->tYPos * 0.5;
+            sp60.z = currentPos.z;            
+            CalculateBoundingRectFromVectors(sp6C, sp60, &sp78);
+            RegisterCollidersIntersectingRect(&sp78, 0x77, 2);
+            spB4 = SearchPolyBelow(currentPos, actor->tYPos * 0.5, -actor->tYPos * 0.5);
+            if (spB4 == NULL) {
+                actor->unk_98 = 1;
+                actor->unk_E0 = -1;
+                actor->unk_E4 = -1;
+            } else {
+                actor->unk_E0 = spB4->unk_04;
+                actor->unk_E4 = spB4 - D_80236980[actor->unk_E0].polygons;
+                currentPos = spB4->intersection;
+            }
+        } else {
+            spB8 = &D_80236980[actor->unk_E0];
+            RegisterFirstCollider(spB8);
+            spB4 = &spB8->polygons[actor->unk_E4];
+        }
+
+        if (spB4 != NULL) {
+            func_800D79E4(spB4, 2);
+            if (spB4->rotationMatrix.normal.y <= 0.0) {
+                DummiedPrintf3("CalcWalkingEnemyNext(): Not On Standable Polygon\n");
+                DummiedPrintf3("Please Check Map Data\n");
+                return;
+            }
+            ProjectOnPolygon(&vel, vel, spB4);
+        }
+    }
+
+    if (spB4 != NULL) {
+        func_800B2AB4(&sp54, currentPos, spB4);
+        vel.x += sp54.x;
+        vel.y += sp54.y;
+        vel.z += sp54.z;
+    }
+
+    speed = NORM_3(vel.x, vel.y, vel.z);
+    if (speed == 0.0) {
+        func_800CC814(actor, currentPos, TRUE);
+        func_800CBC08(actor);
+        return;
+    }
+
+    switch (actor->unk_A0.unk_08) {
+        case 0:
+            spD4.x = currentPos.x + vel.x;
+            spD4.y = currentPos.y + vel.y;
+            spD4.z = currentPos.z + vel.z;
+            break;
+        case 1:
+        case 2:
+            q = actor->tScale / speed;
+
+            spBC.x = vel.x * q;
+            spBC.y = vel.y * q;
+            spBC.z = vel.z * q;
+
+            currentPos.y += actor->tYPos * 0.5;
+
+            spD4.x = currentPos.x + vel.x;
+            spD4.y = currentPos.y + vel.y;
+            spD4.z = currentPos.z + vel.z;
+
+            spE0.x = spD4.x + spBC.x; spE0.y = spD4.y + spBC.y; spE0.z = spD4.z + spBC.z;
+
+            CalculateBoundingRectFromVectors(currentPos, spE0, &sp94);
+            sp94.min.y -= actor->tYPos;
+            RegisterCollidersIntersectingRect(&sp94, 0x77, 4);
+            spB4 = SearchPolygonBetween(currentPos, spE0, 0x77, TRUE, TRUE);
+            if (spB4 != NULL) {
+                spD4.x = spB4->intersection.x - spBC.x;
+                spD4.y = spB4->intersection.y - spBC.y;
+                spD4.z = spB4->intersection.z - spBC.z;
+            }
+            currentPos.y -= actor->tYPos * 0.5;
+            spD4.y -= actor->tYPos * 0.5;
+            break;
+    }
+    
+    poly = SearchPolyBelow(spD4, actor->tYPos * 0.5, -actor->tYPos * 0.5);
+    if (poly == NULL) {
+        if (actor->unk_A0.unk_0C == 0) {
+            spD4 = currentPos;
+            actor->unk_98 = FALSE;
+            actor->unk_9C = TRUE;
+            Shadows_Set(spD4, poly, &actor->unknownPositionThings->unk_0C, actor);
+        } else {
+            actor->unk_98 = TRUE;
+            actor->unk_9C = FALSE;
+        }
+    } else {
+        spD4 = poly->intersection;
+        actor->unk_D4 = spD4.x;
+        actor->unk_D8 = spD4.y;
+        actor->unk_DC = spD4.z;
+        actor->unk_E0 = poly->unk_04;
+        spB8 = &D_80236980[poly->unk_04];
+        actor->unk_E4 = poly - spB8->polygons;
+        actor->unk_98 = FALSE;
+        actor->unk_9C = FALSE;
+        Shadows_Set(spD4, poly, &actor->unknownPositionThings->unk_0C, actor);
+    }
+
+    func_800CC814(actor, spD4, TRUE);
+}
+#else
+#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcWalkingEnemyNext.s")
+#endif
+
+#ifdef NON_MATCHING
 void CalcJumpingEnemyNext(Actor* actor) {
     Vec3f sp154;
     Vec3f sp148;
@@ -1867,6 +2030,9 @@ void CalcJumpingEnemyNext(Actor* actor) {
 
     func_800CC814(actor, sp13C, TRUE);
 }
+#else
+#pragma GLOBAL_ASM("asm/nonmatchings/code/poly/CalcJumpingEnemyNext.s")
+#endif
 
 #pragma GLOBAL_ASM("asm/nonmatchings/code/poly/func_800CEB10.s")
 
